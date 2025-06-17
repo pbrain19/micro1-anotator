@@ -1,4 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Micro Analysis Tool
+
+A tool for analyzing and comparing responses in a structured format.
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+## Usage
+
+1. Place your CSV file in the `public` directory and name it `sample-data.csv`
+2. The CSV file should have the following columns:
+
+   - `task_id`: Unique identifier for each task
+   - `prompt`: The original prompt or conversation
+   - `last_human_message`: The last message from the human
+   - `response_A`: First response to compare
+   - `response_B`: Second response to compare
+   - `Which do you prefer (Response A or Response B)`: Preference between responses
+   - `Why do you prefer the one that you do?`: Reasoning for the preference
+   - `On a scale from 0-3 (inclusive) how strongly do you prefer the response that you chose?`: Strength of preference
+
+3. Start the development server:
+
+```bash
+npm run dev
+```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Features
+
+- View all tasks in a list
+- Compare responses side by side
+- Collapsible sections for better organization
+- Markdown support for formatted text
+- Conversation parsing for structured dialogue
+
+## Development
+
+Built with:
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- React Markdown
+- Papa Parse (CSV parsing)
 
 ## Getting Started
 
