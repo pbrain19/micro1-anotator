@@ -45,3 +45,6 @@ next-env.d.ts
 sample-data.*
 /public/sample-data.*
 /src/app/sample-data.*
+
+
+/examples/
