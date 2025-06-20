@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { CSVRow } from "../types";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const [data, setData] = useState<CSVRow[]>([]);
@@ -73,28 +74,60 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading CSV data...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <div className="text-xl font-semibold text-gray-700">
+            Loading CSV data...
+          </div>
+          <div className="text-sm text-gray-500">
+            Please wait while we load your analysis data
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Error: {error}</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-pink-50 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center gap-4 max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <div className="text-xl font-semibold text-gray-900">
+            Oops! Something went wrong
+          </div>
+          <div className="text-sm text-gray-600 text-center">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Micro Analysis Tool
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Micro Analysis Tool
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Beautiful analysis of your evaluation data
+          </p>
+          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm text-gray-600 border border-white/20">
+            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            {data.length} tasks loaded
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* List View */}
           <div className="lg:col-span-1">
             <TaskList
@@ -114,14 +147,32 @@ export default function Home() {
                 onToggleSection={toggleSection}
               />
             ) : (
-              <div className="rounded-lg shadow-md p-6 text-center">
-                <h2 className="text-xl font-semibold mb-4">
-                  Select a task to view details
-                </h2>
-                <p>
-                  Click on any task from the list to see the full conversation
-                  and responses.
-                </p>
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12 text-center">
+                <div className="max-w-md mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg
+                      className="w-8 h-8 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.121 2.122"
+                      />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Select a task to get started
+                  </h2>
+                  <p className="text-gray-600 leading-relaxed">
+                    Choose any task from the list on the left to explore the
+                    full conversation, responses, and evaluation details in a
+                    beautiful, easy-to-read format.
+                  </p>
+                </div>
               </div>
             )}
           </div>
