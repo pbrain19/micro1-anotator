@@ -71,10 +71,35 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({
 };
 
 const parseContent = (content: string) => {
-  // Handle both triple backticks (```) and triple single quotes (''') as code block delimiters
+  // First, handle single backticks that span multiple lines as code blocks
+  // But be conservative - only if it looks like actual code content
+  const processedContent = content.replace(
+    /`([^`]+)`/g,
+    (match, codeContent) => {
+      // If the content contains newlines AND looks like code (has common code patterns)
+      // and isn't too long (to avoid matching across conversation spans)
+      if (
+        codeContent.includes("\n") &&
+        codeContent.length < 10000 && // Reasonable size limit
+        (codeContent.includes("import") ||
+          codeContent.includes("def ") ||
+          codeContent.includes("class ") ||
+          codeContent.includes("function") ||
+          codeContent.includes("=") ||
+          codeContent.includes("{") ||
+          codeContent.includes("("))
+      ) {
+        return "\n```\n" + codeContent + "\n```\n";
+      }
+      // Otherwise, keep it as inline code
+      return match;
+    }
+  );
+
+  // Then handle both triple backticks (```) and triple single quotes (''') as code block delimiters
   const codeBlockRegex = /(```[\w]*[\s\S]*?```|'''[\w]*[\s\S]*?''')/g;
-  const codeBlocks = content.match(codeBlockRegex) || [];
-  const textParts = content.split(codeBlockRegex);
+  const codeBlocks = processedContent.match(codeBlockRegex) || [];
+  const textParts = processedContent.split(codeBlockRegex);
 
   return { codeBlocks, textParts };
 };
