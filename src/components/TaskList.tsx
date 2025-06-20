@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { CSVRow } from "../types";
-import { Search, X, Hash, Filter } from "lucide-react";
+import { Search, X, Hash, Filter, Copy, Check } from "lucide-react";
 
 interface TaskListProps {
   data: CSVRow[];
@@ -14,6 +14,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onSelectTask,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
@@ -34,6 +35,32 @@ export const TaskList: React.FC<TaskListProps> = ({
 
   const clearSearch = () => {
     setSearchTerm("");
+  };
+
+  const copyRawData = async (
+    item: CSVRow,
+    index: number,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation(); // Prevent task selection when clicking copy button
+
+    // Format the CSV data nicely
+    const rawData = `Task ID: ${item.task_id}
+Prompt: ${item.prompt}
+Last Human Message: ${item.last_human_message}
+Response A: ${item.response_A}
+Response B: ${item.response_B}
+Preference: ${item.preference}
+Reasoning: ${item.reasoning}
+Strength: ${item.strength}`;
+
+    try {
+      await navigator.clipboard.writeText(rawData);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
   };
 
   const getPreferenceColor = (preference: string) => {
@@ -125,19 +152,44 @@ export const TaskList: React.FC<TaskListProps> = ({
                 }`}
               >
                 {/* Task Number */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
-                      selectedIndex === originalIndex
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-700 group-hover:bg-blue-100 group-hover:text-blue-700"
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                        selectedIndex === originalIndex
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 text-gray-700 group-hover:bg-blue-100 group-hover:text-blue-700"
+                      }`}
+                    >
+                      <Hash className="w-4 h-4" />
+                    </div>
+                    <div className="font-semibold text-gray-900 text-sm">
+                      Task #{originalIndex + 1}
+                    </div>
+                  </div>
+
+                  {/* Copy Button */}
+                  <button
+                    onClick={(e) => copyRawData(item, originalIndex, e)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-all duration-200 ${
+                      copiedIndex === originalIndex
+                        ? "bg-green-100 text-green-700 border border-green-200"
+                        : "bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 border border-gray-200 hover:border-blue-200"
                     }`}
+                    title="Copy raw CSV data"
                   >
-                    <Hash className="w-4 h-4" />
-                  </div>
-                  <div className="font-semibold text-gray-900 text-sm">
-                    Task #{originalIndex + 1}
-                  </div>
+                    {copiedIndex === originalIndex ? (
+                      <>
+                        <Check className="w-3 h-3" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        Copy
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {/* Task ID */}
@@ -179,7 +231,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
                 {/* Selection Indicator */}
                 {selectedIndex === originalIndex && (
-                  <div className="absolute top-3 right-3 w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center">
+                  <div className="absolute top-3 right-12 w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center">
                     <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                   </div>
                 )}

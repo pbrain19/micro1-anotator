@@ -71,8 +71,10 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({
 };
 
 const parseContent = (content: string) => {
-  const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
-  const textParts = content.split(/```[\s\S]*?```/);
+  // Handle both triple backticks (```) and triple single quotes (''') as code block delimiters
+  const codeBlockRegex = /(```[\w]*[\s\S]*?```|'''[\w]*[\s\S]*?''')/g;
+  const codeBlocks = content.match(codeBlockRegex) || [];
+  const textParts = content.split(codeBlockRegex);
 
   return { codeBlocks, textParts };
 };
@@ -95,11 +97,11 @@ const renderTextWithInlineCode = (text: string) => {
           {code}
         </code>
       );
-    } else if (part.trim()) {
-      // Regular text - preserve line breaks but keep inline flow
+    } else if (part) {
+      // Regular text - handle line breaks
       const lines = part.split("\n");
       lines.forEach((line, lineIndex) => {
-        if (line.trim()) {
+        if (line) {
           elements.push(<span key={`${index}-${lineIndex}`}>{line}</span>);
         }
         // Add line break if not the last line
@@ -152,23 +154,56 @@ const ContentRenderer: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <div className="space-y-4">
-      {textParts.map((textPart, index) => (
-        <div key={index}>
-          {textPart.trim() && (
-            <p className="text-gray-700 leading-relaxed">
-              {renderTextWithInlineCode(textPart.trim())}
-            </p>
-          )}
-          {codeBlocks[index] && (
-            <CodeBlock
-              code={codeBlocks[index]
-                .replace(/```\w*\n?/, "")
-                .replace(/```$/, "")}
-              language="text"
-            />
-          )}
-        </div>
-      ))}
+      {textParts
+        .map((textPart, index) => {
+          // Skip if this textPart is actually a code block (happens due to capture groups in split)
+          if (
+            textPart &&
+            (textPart.startsWith("```") || textPart.startsWith("'''"))
+          ) {
+            return null;
+          }
+
+          return (
+            <div key={index}>
+              {textPart && textPart.trim() && (
+                <p className="text-gray-700 leading-relaxed">
+                  {renderTextWithInlineCode(textPart.trim())}
+                </p>
+              )}
+              {codeBlocks[index] && (
+                <CodeBlock
+                  code={(() => {
+                    const block = codeBlocks[index];
+                    // Handle both ``` and ''' formats
+                    let match = block.match(/```(\w*)\n?([\s\S]*?)```$/);
+                    if (match) {
+                      return match[2] || ""; // Return code content
+                    }
+                    match = block.match(/'''(\w*)\n?([\s\S]*?)'''$/);
+                    if (match) {
+                      return match[2] || ""; // Return code content
+                    }
+                    // Fallback - remove delimiters
+                    return block
+                      .replace(/(```\w*\n?|'''\w*\n?)/, "")
+                      .replace(/(```|''')$/, "");
+                  })()}
+                  language={(() => {
+                    const block = codeBlocks[index];
+                    // Check for language in both formats
+                    let match = block.match(/```(\w+)/);
+                    if (match) return match[1];
+                    match = block.match(/'''(\w+)/);
+                    if (match) return match[1];
+                    return "text";
+                  })()}
+                />
+              )}
+            </div>
+          );
+        })
+        .filter(Boolean)}
     </div>
   );
 };

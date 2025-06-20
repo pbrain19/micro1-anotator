@@ -71,48 +71,48 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({
 };
 
 const parseContent = (content: string) => {
-  const codeBlocks = content.match(/```[\s\S]*?```/g) || [];
-  const textParts = content.split(/```[\s\S]*?```/);
+  // Handle both triple backticks (```) and triple single quotes (''') as code block delimiters
+  const codeBlockRegex = /(```[\w]*[\s\S]*?```|'''[\w]*[\s\S]*?''')/g;
+  const codeBlocks = content.match(codeBlockRegex) || [];
+  const textParts = content.split(codeBlockRegex);
 
   return { codeBlocks, textParts };
 };
 
 const renderTextWithInlineCode = (text: string) => {
-  // Split by inline code blocks
+  // Split by inline code blocks while preserving the text structure
   const parts = text.split(/(`[^`]+`)/g);
 
-  return parts.map((part, index) => {
+  const elements: React.ReactNode[] = [];
+
+  parts.forEach((part, index) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       // This is inline code
       const code = part.slice(1, -1);
-      return (
+      elements.push(
         <code
           key={index}
-          className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono text-sm inline"
+          className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono text-sm mx-1 inline-block"
         >
           {code}
         </code>
       );
-    } else {
-      // Regular text - split by line breaks and render as paragraphs
-      return part
-        .split("\n")
-        .map((line, lineIndex) => {
-          if (line.trim()) {
-            return (
-              <p
-                key={`${index}-${lineIndex}`}
-                className="mb-2 text-gray-700 leading-relaxed"
-              >
-                {line}
-              </p>
-            );
-          }
-          return null;
-        })
-        .filter(Boolean);
+    } else if (part) {
+      // Regular text - handle line breaks
+      const lines = part.split("\n");
+      lines.forEach((line, lineIndex) => {
+        if (line) {
+          elements.push(<span key={`${index}-${lineIndex}`}>{line}</span>);
+        }
+        // Add line break if not the last line
+        if (lineIndex < lines.length - 1) {
+          elements.push(<br key={`${index}-br-${lineIndex}`} />);
+        }
+      });
     }
   });
+
+  return elements;
 };
 
 const ContentRenderer: React.FC<{ content: string }> = ({ content }) => {
@@ -120,23 +120,56 @@ const ContentRenderer: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <div className="space-y-4">
-      {textParts.map((textPart, index) => (
-        <div key={index}>
-          {textPart.trim() && (
-            <div className="space-y-2">
-              {renderTextWithInlineCode(textPart.trim())}
+      {textParts
+        .map((textPart, index) => {
+          // Skip if this textPart is actually a code block (happens due to capture groups in split)
+          if (
+            textPart &&
+            (textPart.startsWith("```") || textPart.startsWith("'''"))
+          ) {
+            return null;
+          }
+
+          return (
+            <div key={index}>
+              {textPart && textPart.trim() && (
+                <p className="text-gray-700 leading-relaxed">
+                  {renderTextWithInlineCode(textPart.trim())}
+                </p>
+              )}
+              {codeBlocks[index] && (
+                <CodeBlock
+                  code={(() => {
+                    const block = codeBlocks[index];
+                    // Handle both ``` and ''' formats
+                    let match = block.match(/```(\w*)\n?([\s\S]*?)```$/);
+                    if (match) {
+                      return match[2] || ""; // Return code content
+                    }
+                    match = block.match(/'''(\w*)\n?([\s\S]*?)'''$/);
+                    if (match) {
+                      return match[2] || ""; // Return code content
+                    }
+                    // Fallback - remove delimiters
+                    return block
+                      .replace(/(```\w*\n?|'''\w*\n?)/, "")
+                      .replace(/(```|''')$/, "");
+                  })()}
+                  language={(() => {
+                    const block = codeBlocks[index];
+                    // Check for language in both formats
+                    let match = block.match(/```(\w+)/);
+                    if (match) return match[1];
+                    match = block.match(/'''(\w+)/);
+                    if (match) return match[1];
+                    return "text";
+                  })()}
+                />
+              )}
             </div>
-          )}
-          {codeBlocks[index] && (
-            <CodeBlock
-              code={codeBlocks[index]
-                .replace(/```\w*\n?/, "")
-                .replace(/```$/, "")}
-              language="text"
-            />
-          )}
-        </div>
-      ))}
+          );
+        })
+        .filter(Boolean)}
     </div>
   );
 };
