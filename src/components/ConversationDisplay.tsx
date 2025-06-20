@@ -71,16 +71,48 @@ const CodeBlock: React.FC<{ code: string; language?: string }> = ({
 };
 
 const parseContent = (content: string) => {
-  // First, handle single backticks that span multiple lines as code blocks
-  // But be conservative - only if it looks like actual code content
-  const processedContent = content.replace(
-    /`([^`]+)`/g,
-    (match, codeContent) => {
-      // If the content contains newlines AND looks like code (has common code patterns)
-      // and isn't too long (to avoid matching across conversation spans)
+  // First, handle both triple backticks (```) and triple single quotes (''') as code block delimiters
+  const codeBlockRegex = /(```[\w]*[\s\S]*?```|'''[\w]*[\s\S]*?''')/g;
+  const codeBlocks = content.match(codeBlockRegex) || [];
+
+  // If we found code blocks, split by them and process the text parts for single backticks
+  let processedContent = content;
+  if (codeBlocks.length > 0) {
+    // Split by code blocks but preserve them
+    const parts = content.split(codeBlockRegex);
+    processedContent = parts
+      .map((part) => {
+        // If this part matches a code block pattern, keep it as is
+        if (codeBlockRegex.test(part)) {
+          return part;
+        }
+        // Otherwise, process single backticks in this text part
+        return part.replace(/`([^`]+)`/g, (match, codeContent) => {
+          // If the content contains newlines, treat it as a code block
+          if (
+            codeContent.includes("\n") &&
+            codeContent.length < 10000 && // Reasonable size limit
+            (codeContent.includes("import") ||
+              codeContent.includes("def ") ||
+              codeContent.includes("class ") ||
+              codeContent.includes("function") ||
+              codeContent.includes("=") ||
+              codeContent.includes("{") ||
+              codeContent.includes("("))
+          ) {
+            return "\n```\n" + codeContent + "\n```\n";
+          }
+          // Otherwise, keep it as inline code
+          return match;
+        });
+      })
+      .join("");
+  } else {
+    // No triple backticks found, process single backticks on the whole content
+    processedContent = content.replace(/`([^`]+)`/g, (match, codeContent) => {
       if (
         codeContent.includes("\n") &&
-        codeContent.length < 10000 && // Reasonable size limit
+        codeContent.length < 10000 &&
         (codeContent.includes("import") ||
           codeContent.includes("def ") ||
           codeContent.includes("class ") ||
@@ -91,17 +123,15 @@ const parseContent = (content: string) => {
       ) {
         return "\n```\n" + codeContent + "\n```\n";
       }
-      // Otherwise, keep it as inline code
       return match;
-    }
-  );
+    });
+  }
 
-  // Then handle both triple backticks (```) and triple single quotes (''') as code block delimiters
-  const codeBlockRegex = /(```[\w]*[\s\S]*?```|'''[\w]*[\s\S]*?''')/g;
-  const codeBlocks = processedContent.match(codeBlockRegex) || [];
+  // Now get the final code blocks and text parts
+  const finalCodeBlocks = processedContent.match(codeBlockRegex) || [];
   const textParts = processedContent.split(codeBlockRegex);
 
-  return { codeBlocks, textParts };
+  return { codeBlocks: finalCodeBlocks, textParts };
 };
 
 const renderTextWithInlineCode = (text: string) => {
