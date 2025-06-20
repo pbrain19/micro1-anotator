@@ -53,15 +53,15 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       {/* Header Card */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
               <Hash className="w-6 h-6" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-2xl font-bold">Task #{index + 1}</h2>
               <p className="text-blue-100">Detailed analysis and evaluation</p>
             </div>
@@ -71,7 +71,9 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             <div className="text-xs uppercase tracking-wide text-blue-200 mb-1">
               Task ID
             </div>
-            <div className="font-mono text-sm break-all">{data.task_id}</div>
+            <div className="font-mono text-sm break-all overflow-hidden">
+              {data.task_id}
+            </div>
           </div>
         </div>
 
@@ -182,12 +184,12 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
           badge="Compare & Evaluate"
           badgeColor="bg-purple-100 text-purple-800"
         >
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-6">
             <div className="bg-white border border-blue-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className="bg-blue-50 border-b border-blue-200 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-blue-900 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-blue-600 text-white rounded text-xs font-bold flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-600 text-white rounded text-xs font-bold flex items-center justify-center flex-shrink-0">
                       A
                     </div>
                     Response A
@@ -209,7 +211,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
               <div className="bg-green-50 border-b border-green-200 p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-green-900 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-green-600 text-white rounded text-xs font-bold flex items-center justify-center">
+                    <div className="w-6 h-6 bg-green-600 text-white rounded text-xs font-bold flex items-center justify-center flex-shrink-0">
                       B
                     </div>
                     Response B

@@ -86,9 +86,9 @@ Strength: ${item.strength}`;
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    <div className="h-full bg-white border-r border-gray-200 overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
             <Filter className="w-5 h-5 text-blue-600" />
@@ -128,7 +128,7 @@ Strength: ${item.strength}`;
       </div>
 
       {/* Task List */}
-      <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {filteredData.length === 0 ? (
           <div className="p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

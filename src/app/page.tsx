@@ -5,7 +5,13 @@ import Papa from "papaparse";
 import { CSVRow } from "../types";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
-import { Loader2, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+  ChevronLeft,
+  Search,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Home() {
@@ -18,6 +24,7 @@ export default function Home() {
   const [collapsedSections, setCollapsedSections] = useState<{
     [key: string]: boolean;
   }>({});
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
 
   useEffect(() => {
     const loadCSV = async () => {
@@ -91,10 +98,10 @@ export default function Home() {
     router.push(url.pathname + url.search, { scroll: false });
   };
 
-  const toggleSection = (sectionKey: string) => {
+  const handleToggleSection = (key: string) => {
     setCollapsedSections((prev) => ({
       ...prev,
-      [sectionKey]: !prev[sectionKey],
+      [key]: !prev[key],
     }));
   };
 
@@ -138,75 +145,101 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Micro Analysis Tool
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Beautiful analysis of your evaluation data
-          </p>
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm text-gray-600 border border-white/20">
-            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            {data.length} tasks loaded
-            {selectedIndex !== null && (
-              <>
-                <span className="mx-2">•</span>
-                <span>Task #{selectedIndex + 1} selected</span>
-              </>
-            )}
+      {/* Header - Fixed */}
+      <div className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-b border-gray-200 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Micro Analysis Tool
+              </h1>
+              <p className="text-gray-600 text-sm">
+                Beautiful analysis of your evaluation data
+              </p>
+            </div>
+            <div className="flex items-center space-x-4 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-gray-600">
+                  {data.length} tasks loaded
+                </span>
+              </div>
+              {selectedIndex !== null && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-gray-600">
+                    Task #{selectedIndex + 1} selected
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* List View */}
-          <div className="lg:col-span-1">
-            <TaskList
-              data={data}
-              selectedIndex={selectedIndex}
-              onSelectTask={handleTaskSelection}
-            />
-          </div>
+      <div className="pt-20 pb-8">
+        <div className="container mx-auto px-6">
+          {/* Main Content */}
+          <div className="relative">
+            {/* Task List - Fixed Position */}
+            <div
+              className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white/90 backdrop-blur-sm border-r border-gray-200 transition-all duration-300 z-40 ${
+                isListCollapsed ? "w-12" : "w-80"
+              }`}
+            >
+              {/* Collapse/Expand Button */}
+              <button
+                onClick={() => setIsListCollapsed(!isListCollapsed)}
+                className="absolute -right-3 top-4 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors z-50"
+              >
+                {isListCollapsed ? (
+                  <ChevronRight className="w-3 h-3 text-gray-600" />
+                ) : (
+                  <ChevronLeft className="w-3 h-3 text-gray-600" />
+                )}
+              </button>
 
-          {/* Detail View */}
-          <div className="lg:col-span-3">
-            {selectedIndex !== null ? (
-              <TaskDetails
-                data={data[selectedIndex]}
-                index={selectedIndex}
-                collapsedSections={collapsedSections}
-                onToggleSection={toggleSection}
-              />
-            ) : (
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg
-                      className="w-8 h-8 text-blue-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.121 2.122"
-                      />
-                    </svg>
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    Select a task to get started
-                  </h2>
-                  <p className="text-gray-600 leading-relaxed">
-                    Choose any task from the list on the left to explore the
-                    full conversation, responses, and evaluation details in a
-                    beautiful, easy-to-read format.
-                  </p>
+              {!isListCollapsed && (
+                <div className="h-full overflow-hidden">
+                  <TaskList
+                    data={data}
+                    selectedIndex={selectedIndex}
+                    onSelectTask={handleTaskSelection}
+                  />
                 </div>
+              )}
+            </div>
+
+            {/* Task Details - Adjusted margin and max width */}
+            <div
+              className={`transition-all duration-300 ${
+                isListCollapsed ? "ml-12" : "ml-80"
+              }`}
+            >
+              <div className="max-w-full px-6">
+                {selectedIndex !== null ? (
+                  <TaskDetails
+                    data={data[selectedIndex]}
+                    index={selectedIndex}
+                    collapsedSections={collapsedSections}
+                    onToggleSection={handleToggleSection}
+                  />
+                ) : (
+                  <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-12 text-center border border-white/20">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                      <Search className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      Select a Task
+                    </h3>
+                    <p className="text-gray-600">
+                      Choose a task from the list to view detailed analysis and
+                      evaluation data.
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
