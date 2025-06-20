@@ -118,20 +118,29 @@ const renderTextWithInlineCode = (text: string) => {
 const parseConversation = (text: string): ConversationPart[] => {
   if (!text) return [];
 
-  // Split by H: or Human: or Assistant: markers
-  const parts = text.split(/(?=(?:H:|Human:|Assistant:))/);
+  // Only parse as conversation if there are clear conversation markers at the start of lines
+  // and multiple conversation turns
+  const conversationMarkers = text.match(/^(?:H:|Human:|Assistant:)/gm);
+
+  // If there are fewer than 2 conversation markers, treat as regular content
+  if (!conversationMarkers || conversationMarkers.length < 2) {
+    return [];
+  }
+
+  // Split by H: or Human: or Assistant: markers at the start of lines
+  const parts = text.split(/(?=^(?:H:|Human:|Assistant:))/gm);
   const conversation: ConversationPart[] = [];
 
   parts.forEach((part) => {
     const trimmed = part.trim();
     if (!trimmed) return;
 
-    if (trimmed.startsWith("H:") || trimmed.startsWith("Human:")) {
+    if (trimmed.match(/^(H:|Human:)/)) {
       const content = trimmed.replace(/^(?:H:|Human:)\s*/, "").trim();
       if (content) {
         conversation.push({ speaker: "Human", content });
       }
-    } else if (trimmed.startsWith("Assistant:")) {
+    } else if (trimmed.match(/^Assistant:/)) {
       const content = trimmed.replace(/^Assistant:\s*/, "").trim();
       if (content) {
         conversation.push({ speaker: "Assistant", content });

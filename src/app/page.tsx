@@ -6,8 +6,11 @@ import { CSVRow } from "../types";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
 import { Loader2, AlertCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<CSVRow[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,20 @@ export default function Home() {
               .filter((row) => row.task_id); // Filter out empty rows
 
             setData(parsedData);
+
+            // Check for task parameter in URL after data is loaded
+            const taskParam = searchParams.get("task");
+            if (taskParam) {
+              const taskIndex = parseInt(taskParam, 10);
+              if (
+                !isNaN(taskIndex) &&
+                taskIndex >= 0 &&
+                taskIndex < parsedData.length
+              ) {
+                setSelectedIndex(taskIndex);
+              }
+            }
+
             setLoading(false);
           },
           error: (error: Error) => {
@@ -63,7 +80,16 @@ export default function Home() {
     };
 
     loadCSV();
-  }, []);
+  }, [searchParams]);
+
+  const handleTaskSelection = (index: number) => {
+    setSelectedIndex(index);
+
+    // Update URL with task parameter
+    const url = new URL(window.location.href);
+    url.searchParams.set("task", index.toString());
+    router.push(url.pathname + url.search, { scroll: false });
+  };
 
   const toggleSection = (sectionKey: string) => {
     setCollapsedSections((prev) => ({
@@ -124,6 +150,12 @@ export default function Home() {
           <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm text-gray-600 border border-white/20">
             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
             {data.length} tasks loaded
+            {selectedIndex !== null && (
+              <>
+                <span className="mx-2">•</span>
+                <span>Task #{selectedIndex + 1} selected</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -133,7 +165,7 @@ export default function Home() {
             <TaskList
               data={data}
               selectedIndex={selectedIndex}
-              onSelectTask={setSelectedIndex}
+              onSelectTask={handleTaskSelection}
             />
           </div>
 
