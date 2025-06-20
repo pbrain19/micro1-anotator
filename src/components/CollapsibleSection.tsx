@@ -35,7 +35,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             </div>
           )}
           <div>
-            <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+            <h3 className="text-xl font-bold ">{title}</h3>
             {badge && (
               <span
                 className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${badgeColor}`}
