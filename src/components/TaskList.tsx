@@ -43,19 +43,99 @@ export const TaskList: React.FC<TaskListProps> = ({
     e: React.MouseEvent
   ) => {
     e.stopPropagation(); // Prevent task selection when clicking copy button
+    const promptTemplate = `# Prompt Template for Response Comparison Evaluation
 
+## Task Overview
+You will evaluate two responses to a user request. Your task is to compare both responses and provide a reasoned preference based on quality, relevance, and effectiveness.
+
+## Context
+
+### Conversation History
+\`\`\`
+${item?.prompt}
+\`\`\`
+
+### Last Human Message
+\`\`\`
+${item?.last_human_message}
+\`\`\`
+
+## Responses to Evaluate
+
+### Response A
+\`\`\`
+${item?.response_A}
+\`\`\`
+
+### Response B
+\`\`\`
+${item?.response_B}
+\`\`\`
+
+## Evaluation Instructions
+
+Please analyze both responses and answer the following questions:
+
+### 1. Which response do you prefer (Response A or Response B)?
+State your choice clearly.
+
+### 2. Why do you prefer the response you chose?
+Provide a detailed explanation considering these general criteria (adapt as relevant to the specific task):
+
+**Core Criteria:**
+- **Accuracy & Correctness**: Factual accuracy, technical correctness, adherence to requirements
+- **Completeness**: How thoroughly the response addresses all aspects of the request
+- **Clarity & Organization**: Structure, readability, logical flow of information
+- **Relevance**: How well the response stays on topic and addresses the specific needs
+- **Usefulness**: Practical value and applicability of the response
+- **Quality of Examples/Implementation**: If applicable, quality of code, examples, or demonstrations
+
+**Additional Considerations (when applicable):**
+- Creativity and originality
+- Depth of analysis or explanation
+- Appropriate tone and style
+- Efficiency or elegance of solution
+- Best practices for the domain
+- Potential edge cases or limitations addressed
+
+### 3. Preference Strength Rating
+On a scale from 0-3 (inclusive), how strongly do you prefer your chosen response?
+- **0**: No preference / Both responses are equally good
+- **1**: Slight preference / Minor advantages to chosen response
+- **2**: Moderate preference / Clear advantages but other response has merit
+- **3**: Strong preference / Chosen response is significantly better
+
+## Response Format
+
+Please structure your response as follows:
+
+**Preferred Response:** [A or B]
+
+**Reasoning:**
+[Detailed explanation based on the criteria above, focusing on the most relevant aspects for this specific task]
+
+**Preference Strength:** [0-3]
+
+**Key Differentiators:**
+- [Main advantage 1 of preferred response]
+- [Main advantage 2 of preferred response]
+- [Any notable strengths of the non-preferred response]
+
+---
+
+*Note: Focus on objective analysis rather than personal preferences. Consider the specific context and requirements of the task when evaluating.*`;
     // Format the CSV data nicely
-    const rawData = `Task ID: ${item.task_id}
-Prompt: ${item.prompt}
-Last Human Message: ${item.last_human_message}
-Response A: ${item.response_A}
-Response B: ${item.response_B}
-Preference: ${item.preference}
-Reasoning: ${item.reasoning}
-Strength: ${item.strength}`;
+//     const rawData = `Task ID: ${item.task_id}
+// Prompt: ${item.prompt}
+// Last Human Message: ${item.last_human_message}
+// Response A: ${item.response_A}
+// Response B: ${item.response_B}
+// Preference: ${item.preference}
+// Reasoning: ${item.reasoning}
+// Strength: ${item.strength}`;
 
     try {
-      await navigator.clipboard.writeText(rawData);
+      await navigator.clipboard.writeText(promptTemplate);
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch (err) {
