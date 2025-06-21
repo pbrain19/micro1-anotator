@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { TaskWithDuplicates } from "../types";
 import { ConversationDisplay } from "./ConversationDisplay";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -29,6 +30,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   collapsedSections,
   onToggleSection,
 }) => {
+  const router = useRouter();
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
 
   const handleCopyTaskId = async (taskId: string) => {
@@ -50,7 +52,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   const handleOpenLink = (taskId: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set("task", taskId);
-    window.open(url.toString(), "_blank");
+    router.push(url.pathname + url.search, { scroll: false });
   };
 
   return (

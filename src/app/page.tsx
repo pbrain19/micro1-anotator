@@ -14,10 +14,11 @@ import {
   ChevronLeft,
   Search,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [rawData, setRawData] = useState<CSVRow[]>([]);
   const [expertOpinions, setExpertOpinions] = useState<ExpertOpinion[]>([]);
   const [enhancedTasks, setEnhancedTasks] = useState<TaskWithDuplicates[]>([]);
@@ -125,8 +126,7 @@ export default function Home() {
   // Handle URL parameters after data loads
   useEffect(() => {
     if (enhancedTasks.length > 0) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const taskParam = urlParams.get("task");
+      const taskParam = searchParams.get("task");
       if (taskParam) {
         const taskIndex = enhancedTasks.findIndex(
           (task) => task.task_id === taskParam
@@ -136,7 +136,7 @@ export default function Home() {
         }
       }
     }
-  }, [enhancedTasks]);
+  }, [enhancedTasks, searchParams]);
 
   const handleTaskSelection = (index: number) => {
     setSelectedIndex(index);
