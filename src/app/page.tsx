@@ -6,6 +6,7 @@ import { CSVRow, ExpertOpinion, TaskWithDuplicates } from "../types";
 import { identifyDuplicateTasks } from "../components/util";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
+import { FileUpload } from "../components/FileUpload";
 import {
   Loader2,
   AlertCircle,
@@ -20,106 +21,98 @@ export default function Home() {
   const [rawData, setRawData] = useState<CSVRow[]>([]);
   const [expertOpinions, setExpertOpinions] = useState<ExpertOpinion[]>([]);
   const [enhancedTasks, setEnhancedTasks] = useState<TaskWithDuplicates[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isListCollapsed, setIsListCollapsed] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<{
     [key: string]: boolean;
   }>({});
+  const [filesUploaded, setFilesUploaded] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
+  const handleFilesSelected = async (taskFile: File, resultsFile: File) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        // Load original CSV data
-        const response = await fetch("/sample_data.csv");
-        if (!response.ok) {
-          throw new Error("Failed to fetch CSV data");
-        }
-        const csvText = await response.text();
+      // Read task file
+      const taskText = await taskFile.text();
 
-        // Load expert opinions CSV
-        const resultsResponse = await fetch("/results.csv");
-        if (!resultsResponse.ok) {
-          throw new Error("Failed to fetch results CSV data");
-        }
-        const resultsText = await resultsResponse.text();
+      // Read results file
+      const resultsText = await resultsFile.text();
 
-        // Parse original data
-        Papa.parse<CSVRow>(csvText, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            if (results.errors.length > 0) {
-              console.error("CSV parsing errors:", results.errors);
-            }
-            setRawData(results.data);
-          },
-          error: (error: Error) => {
-            throw new Error(`CSV parsing failed: ${error.message}`);
-          },
-        });
+      // Parse task data
+      Papa.parse<CSVRow>(taskText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.errors.length > 0) {
+            console.error("CSV parsing errors:", results.errors);
+          }
+          setRawData(results.data);
+        },
+        error: (error: Error) => {
+          throw new Error(`Task CSV parsing failed: ${error.message}`);
+        },
+      });
 
-        // Parse expert opinions
-        Papa.parse<Record<string, string>>(resultsText, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            if (results.errors.length > 0) {
-              console.error("Results CSV parsing errors:", results.errors);
-            }
-            // Transform the data to match our interface
-            const transformedData = results.data.map(
-              (row: Record<string, string>) => ({
-                task_id: row["task ID"] || "",
-                programming_language: row["Programming Language"] || "",
-                topic: row["topic"] || "",
-                category: row["category"] || "",
-                task_progress: row["Task Progress"] || "",
-                assigned_preference_chooser:
-                  row["Assigned Preference Chooser"] || "",
-                preference_choice: row["Preference Choice"] || "",
-                preference_strength:
-                  row[
-                    "Preference Strength (0-3 scale, 0 being nearly identical with low strength of preference and 3 being highly different and a very strong preference for your choice)"
-                  ] || "",
-                preference_justification:
-                  row[
-                    "3+ Sentence Preference Justification (3+ sentences covering the difference in relevance, accuracy, clarity, etc. )"
-                  ] || "",
-                response_a_image:
-                  row[
-                    "INSERT RESPONSE A SUPPORTING IMAGE HERE (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
-                  ] || "",
-                response_b_image:
-                  row[
-                    "INSERT RESPONSE B SUPPORTING IMAGE HERE  (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
-                  ] || "",
-                assigned_reviewer: row["Assigned Reviewer"] || "",
-                review: row["Review"] || "",
-                justification_for_review:
-                  row[
-                    "Justification for Review (Why do you agree or disagree with their preference choice in 1-3 sentences?)"
-                  ] || "",
-              })
-            );
-            setExpertOpinions(transformedData);
-          },
-          error: (error: Error) => {
-            throw new Error(`Results CSV parsing failed: ${error.message}`);
-          },
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Parse expert opinions
+      Papa.parse<Record<string, string>>(resultsText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (results.errors.length > 0) {
+            console.error("Results CSV parsing errors:", results.errors);
+          }
+          // Transform the data to match our interface
+          const transformedData = results.data.map(
+            (row: Record<string, string>) => ({
+              task_id: row["task ID"] || "",
+              programming_language: row["Programming Language"] || "",
+              topic: row["topic"] || "",
+              category: row["category"] || "",
+              task_progress: row["Task Progress"] || "",
+              assigned_preference_chooser:
+                row["Assigned Preference Chooser"] || "",
+              preference_choice: row["Preference Choice"] || "",
+              preference_strength:
+                row[
+                  "Preference Strength (0-3 scale, 0 being nearly identical with low strength of preference and 3 being highly different and a very strong preference for your choice)"
+                ] || "",
+              preference_justification:
+                row[
+                  "3+ Sentence Preference Justification (3+ sentences covering the difference in relevance, accuracy, clarity, etc. )"
+                ] || "",
+              response_a_image:
+                row[
+                  "INSERT RESPONSE A SUPPORTING IMAGE HERE (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
+                ] || "",
+              response_b_image:
+                row[
+                  "INSERT RESPONSE B SUPPORTING IMAGE HERE  (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
+                ] || "",
+              assigned_reviewer: row["Assigned Reviewer"] || "",
+              review: row["Review"] || "",
+              justification_for_review:
+                row[
+                  "Justification for Review (Why do you agree or disagree with their preference choice in 1-3 sentences?)"
+                ] || "",
+            })
+          );
+          setExpertOpinions(transformedData);
+        },
+        error: (error: Error) => {
+          throw new Error(`Results CSV parsing failed: ${error.message}`);
+        },
+      });
 
-    loadData();
-  }, []);
+      setFilesUploaded(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Process enhanced tasks when both datasets are loaded
   useEffect(() => {
@@ -192,7 +185,14 @@ export default function Home() {
           </div>
           <div className="text-sm text-gray-600 text-center">{error}</div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setError(null);
+              setFilesUploaded(false);
+              setRawData([]);
+              setExpertOpinions([]);
+              setEnhancedTasks([]);
+              setSelectedIndex(null);
+            }}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Try Again
@@ -200,6 +200,11 @@ export default function Home() {
         </div>
       </div>
     );
+  }
+
+  // Show file upload interface if files haven't been uploaded yet
+  if (!filesUploaded) {
+    return <FileUpload onFilesSelected={handleFilesSelected} />;
   }
 
   return (
