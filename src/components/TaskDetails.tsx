@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { TaskWithDuplicates } from "../types";
 import { ConversationDisplay } from "./ConversationDisplay";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -12,6 +12,8 @@ import {
   Users,
   Eye,
   ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface TaskDetailsProps {
@@ -19,7 +21,6 @@ interface TaskDetailsProps {
   index: number;
   collapsedSections: { [key: string]: boolean };
   onToggleSection: (key: string) => void;
-  onTaskSelect?: (taskId: string) => void;
 }
 
 export const TaskDetails: React.FC<TaskDetailsProps> = ({
@@ -27,18 +28,29 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   index,
   collapsedSections,
   onToggleSection,
-  onTaskSelect,
 }) => {
-  const handleTaskIdClick = (taskId: string) => {
-    if (onTaskSelect) {
-      onTaskSelect(taskId);
-    } else {
-      // Fallback: update URL directly
-      const url = new URL(window.location.href);
-      url.searchParams.set("task", taskId);
-      window.history.pushState({}, "", url.pathname + url.search);
-      window.location.reload();
+  const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
+
+  const handleCopyTaskId = async (taskId: string) => {
+    try {
+      await navigator.clipboard.writeText(taskId);
+      setCopiedTaskIds((prev) => new Set(prev).add(taskId));
+      setTimeout(() => {
+        setCopiedTaskIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(taskId);
+          return newSet;
+        });
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy task ID:", err);
     }
+  };
+
+  const handleOpenLink = (taskId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("task", taskId);
+    window.open(url.toString(), "_blank");
   };
 
   return (
@@ -61,14 +73,31 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             <div className="text-xs uppercase tracking-wide text-blue-200 mb-1">
               Task ID
             </div>
-            <button
-              onClick={() => handleTaskIdClick(task.task_id)}
-              className="group flex items-center gap-2 font-mono text-sm break-all overflow-hidden hover:bg-white/10 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-              title="Click to navigate to task"
-            >
-              <span className="flex-1 text-left">{task.task_id}</span>
-              <ExternalLink className="w-4 h-4 text-blue-200 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm break-all flex-1">
+                {task.task_id}
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => handleCopyTaskId(task.task_id)}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                  title="Copy task ID"
+                >
+                  {copiedTaskIds.has(task.task_id) ? (
+                    <Check className="w-4 h-4 text-green-300" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-blue-200" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleOpenLink(task.task_id)}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                  title="Open in new tab"
+                >
+                  <ExternalLink className="w-4 h-4 text-blue-200" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -155,17 +184,32 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                     className="bg-white p-3 rounded border border-orange-200"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <button
-                        onClick={() => handleTaskIdClick(duplicate.task_id)}
-                        className="group flex items-center gap-2 font-mono text-xs text-orange-700 hover:bg-orange-100 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-                        title="Click to navigate to duplicate task"
-                      >
-                        <span className="flex-1 text-left">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="font-mono text-xs text-orange-700 break-all flex-1">
                           {duplicate.task_id}
                         </span>
-                        <ExternalLink className="w-3 h-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                      </button>
-                      <span className="text-xs bg-orange-100 px-2 py-1 rounded text-orange-700">
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => handleCopyTaskId(duplicate.task_id)}
+                            className="p-1 hover:bg-orange-100 rounded transition-colors"
+                            title="Copy task ID"
+                          >
+                            {copiedTaskIds.has(duplicate.task_id) ? (
+                              <Check className="w-3 h-3 text-green-600" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-orange-600" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleOpenLink(duplicate.task_id)}
+                            className="p-1 hover:bg-orange-100 rounded transition-colors"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="w-3 h-3 text-orange-600" />
+                          </button>
+                        </div>
+                      </div>
+                      <span className="text-xs bg-orange-100 px-2 py-1 rounded text-orange-700 flex-shrink-0">
                         Duplicate #{idx + 1}
                       </span>
                     </div>

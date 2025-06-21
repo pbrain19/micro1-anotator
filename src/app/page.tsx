@@ -157,15 +157,6 @@ export default function Home() {
     }
   };
 
-  const handleTaskSelectionById = (taskId: string) => {
-    const taskIndex = enhancedTasks.findIndex(
-      (task) => task.task_id === taskId
-    );
-    if (taskIndex !== -1) {
-      handleTaskSelection(taskIndex);
-    }
-  };
-
   const handleToggleSection = (key: string) => {
     setCollapsedSections((prev) => ({
       ...prev,
@@ -292,7 +283,6 @@ export default function Home() {
                     index={selectedIndex}
                     collapsedSections={collapsedSections}
                     onToggleSection={handleToggleSection}
-                    onTaskSelect={handleTaskSelectionById}
                   />
                 ) : (
                   <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-12 text-center border border-white/20">
