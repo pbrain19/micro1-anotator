@@ -248,6 +248,56 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                           </p>
                         </div>
                       )}
+
+                      {/* Reviewer Information */}
+                      {duplicate.expert_opinion.assigned_reviewer && (
+                        <div className="border-t border-orange-200 pt-2 mt-2">
+                          <div>
+                            <span className="font-medium text-orange-800">
+                              Reviewer:{" "}
+                            </span>
+                            <span className="text-orange-700">
+                              {duplicate.expert_opinion.assigned_reviewer}
+                            </span>
+                          </div>
+                          {duplicate.expert_opinion.review && (
+                            <div>
+                              <span className="font-medium text-orange-800">
+                                Decision:{" "}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded ${
+                                  duplicate.expert_opinion.review
+                                    .toLowerCase()
+                                    .includes("agree")
+                                    ? "bg-green-100 text-green-700"
+                                    : duplicate.expert_opinion.review
+                                        .toLowerCase()
+                                        .includes("disagree")
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {duplicate.expert_opinion.review}
+                              </span>
+                            </div>
+                          )}
+                          {duplicate.expert_opinion
+                            .justification_for_review && (
+                            <div>
+                              <div className="font-medium text-orange-800 mb-1">
+                                Review Justification:
+                              </div>
+                              <p className="text-orange-700 text-xs leading-relaxed">
+                                {
+                                  duplicate.expert_opinion
+                                    .justification_for_review
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
