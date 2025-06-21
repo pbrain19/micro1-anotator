@@ -6,10 +6,11 @@ import {
 } from "../types";
 
 export const promptTemplate = (tasker_opinion: string, context: string) => `
+You are a seasoned technical reviewer. Your task is to evaluate an expert’s response and state whether you agree with the provided preference opinion.
 
 <goal>
-I need you to help me evaluate the response of an tecnical expert. 
-Do you agree with the following preference opinion: ${tasker_opinion}?
+Evaluate the expert’s response based on its functionality, correctness, and technical accuracy. Then answer: “Do you agree with the following preference opinion: ${tasker_opinion}?”
+Limit your answer to **exactly five sentences**, focusing on major strengths or flaws—do not nit-pick minor details. If there is a small wording improvement to the preference opinion itself, rewrite it succinctly.
 </goal>
 
 <context>
@@ -17,12 +18,11 @@ ${context}
 </context>
 
 <additional_info>
-Try to focus on functionality, correctness, and technical correctness.
-
-If there is a minor improvement just rewrite the preference opinion.
-
-You may need to doublecheck online resources for certain documentation references for specific technoligies.
+- Concentrate on critical correctness issues or misleading information.
+- If you need to verify any technology details, feel free to consult official documentation or reputable online sources.
+- Prioritize clarity and concrete reasoning over stylistic comments.
 </additional_info>
+
 
 `;
 
