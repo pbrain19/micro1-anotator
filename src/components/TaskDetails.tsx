@@ -1,55 +1,44 @@
 import React from "react";
-import { CSVRow } from "../types";
+import { TaskWithDuplicates } from "../types";
 import { ConversationDisplay } from "./ConversationDisplay";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { ResponseDisplay } from "./ResponseDisplay";
 import {
   Hash,
   Trophy,
-  Target,
   MessageSquare,
   User,
   Zap,
-  Star,
-  CheckCircle,
+  Users,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 
 interface TaskDetailsProps {
-  data: CSVRow;
+  task: TaskWithDuplicates;
   index: number;
   collapsedSections: { [key: string]: boolean };
   onToggleSection: (key: string) => void;
+  onTaskSelect?: (taskId: string) => void;
 }
 
 export const TaskDetails: React.FC<TaskDetailsProps> = ({
-  data,
+  task,
   index,
   collapsedSections,
   onToggleSection,
+  onTaskSelect,
 }) => {
-  const getPreferenceColor = (preference: string) => {
-    switch (preference.toLowerCase()) {
-      case "response a":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "response b":
-        return "bg-green-100 text-green-800 border-green-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+  const handleTaskIdClick = (taskId: string) => {
+    if (onTaskSelect) {
+      onTaskSelect(taskId);
+    } else {
+      // Fallback: update URL directly
+      const url = new URL(window.location.href);
+      url.searchParams.set("task", taskId);
+      window.history.pushState({}, "", url.pathname + url.search);
+      window.location.reload();
     }
-  };
-
-  const getStrengthStars = (strength: string) => {
-    const num = parseInt(strength) || 0;
-    return Array(3)
-      .fill(0)
-      .map((_, i) => (
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i < num ? "text-yellow-400 fill-current" : "text-gray-300"
-          }`}
-        />
-      ));
   };
 
   return (
@@ -67,13 +56,19 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             </div>
           </div>
 
+          {/* Task ID */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="text-xs uppercase tracking-wide text-blue-200 mb-1">
               Task ID
             </div>
-            <div className="font-mono text-sm break-all overflow-hidden">
-              {data.task_id}
-            </div>
+            <button
+              onClick={() => handleTaskIdClick(task.task_id)}
+              className="group flex items-center gap-2 font-mono text-sm break-all overflow-hidden hover:bg-white/10 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
+              title="Click to navigate to task"
+            >
+              <span className="flex-1 text-left">{task.task_id}</span>
+              <ExternalLink className="w-4 h-4 text-blue-200 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </button>
           </div>
         </div>
 
@@ -86,56 +81,146 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             </h3>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Preference */}
-            <div className="bg-gray-50 rounded-lg p-4">
+          {/* Expert Opinion */}
+          {task.expert_opinion && (
+            <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
               <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-blue-600" />
-                <span className="font-semibold text-gray-900">Preference</span>
-              </div>
-              {data.preference ? (
-                <span
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium border ${getPreferenceColor(
-                    data.preference
-                  )}`}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {data.preference}
+                <Eye className="w-5 h-5 text-green-600" />
+                <span className="font-semibold text-green-800">
+                  Expert Evaluation
                 </span>
-              ) : (
-                <span className="text-gray-500 italic">Not specified</span>
-              )}
-            </div>
-
-            {/* Strength */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Zap className="w-5 h-5 text-yellow-600" />
-                <span className="font-semibold text-gray-900">Strength</span>
               </div>
-              {data.strength ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {getStrengthStars(data.strength)}
-                  </div>
-                  <span className="text-sm font-medium text-gray-700">
-                    {data.strength}/3
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-green-800">
+                    Evaluator:{" "}
+                  </span>
+                  <span className="text-green-700">
+                    {task.expert_opinion.assigned_preference_chooser}
                   </span>
                 </div>
-              ) : (
-                <span className="text-gray-500 italic">Not specified</span>
-              )}
+                <div>
+                  <span className="text-sm font-medium text-green-800">
+                    Choice:{" "}
+                  </span>
+                  <span className="text-green-700">
+                    {task.expert_opinion.preference_choice}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-green-800">
+                    Strength:{" "}
+                  </span>
+                  <span className="text-green-700">
+                    {task.expert_opinion.preference_strength}
+                  </span>
+                </div>
+                {task.expert_opinion.preference_justification && (
+                  <div>
+                    <div className="text-sm font-medium text-green-800 mb-1">
+                      Justification:
+                    </div>
+                    <p className="text-green-700 text-sm leading-relaxed">
+                      {task.expert_opinion.preference_justification}
+                    </p>
+                  </div>
+                )}
+                {task.expert_opinion.assigned_reviewer && (
+                  <div>
+                    <span className="text-sm font-medium text-green-800">
+                      Reviewer:{" "}
+                    </span>
+                    <span className="text-green-700">
+                      {task.expert_opinion.assigned_reviewer}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Duplicates */}
+          {task.duplicates && task.duplicates.length > 0 && (
+            <div className="mt-4 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-orange-600" />
+                <span className="font-semibold text-orange-800">
+                  Duplicate Tasks ({task.duplicates.length})
+                </span>
+              </div>
+              <div className="space-y-4">
+                {task.duplicates.map((duplicate, idx) => (
+                  <div
+                    key={duplicate.task_id}
+                    className="bg-white p-3 rounded border border-orange-200"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <button
+                        onClick={() => handleTaskIdClick(duplicate.task_id)}
+                        className="group flex items-center gap-2 font-mono text-xs text-orange-700 hover:bg-orange-100 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
+                        title="Click to navigate to duplicate task"
+                      >
+                        <span className="flex-1 text-left">
+                          {duplicate.task_id}
+                        </span>
+                        <ExternalLink className="w-3 h-3 text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      </button>
+                      <span className="text-xs bg-orange-100 px-2 py-1 rounded text-orange-700">
+                        Duplicate #{idx + 1}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium text-orange-800">
+                          Evaluator:{" "}
+                        </span>
+                        <span className="text-orange-700">
+                          {duplicate.expert_opinion.assigned_preference_chooser}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-orange-800">
+                          Choice:{" "}
+                        </span>
+                        <span className="text-orange-700">
+                          {duplicate.expert_opinion.preference_choice}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-orange-800">
+                          Strength:{" "}
+                        </span>
+                        <span className="text-orange-700">
+                          {duplicate.expert_opinion.preference_strength}
+                        </span>
+                      </div>
+                      {duplicate.expert_opinion.preference_justification && (
+                        <div>
+                          <div className="font-medium text-orange-800 mb-1">
+                            Justification:
+                          </div>
+                          <p className="text-orange-700 text-xs leading-relaxed">
+                            {duplicate.expert_opinion.preference_justification}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Reasoning */}
-          {data.reasoning && (
-            <div className="mt-6 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+          {task.reasoning && (
+            <div className="mt-4 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
               <div className="flex items-center gap-2 mb-2">
                 <MessageSquare className="w-5 h-5 text-amber-600" />
-                <span className="font-semibold text-amber-800">Reasoning</span>
+                <span className="font-semibold text-amber-800">
+                  Original Reasoning
+                </span>
               </div>
-              <p className="text-amber-800 leading-relaxed">{data.reasoning}</p>
+              <p className="text-amber-800 leading-relaxed">{task.reasoning}</p>
             </div>
           )}
         </div>
@@ -144,7 +229,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
       {/* Content Sections */}
       <div className="space-y-6">
         {/* Prompt */}
-        {data.prompt && (
+        {task.prompt && (
           <CollapsibleSection
             title="Original Prompt"
             sectionKey={`prompt-${index}`}
@@ -154,13 +239,13 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
             badge="Initial Request"
             badgeColor="bg-blue-100 text-blue-800"
           >
-            <ConversationDisplay content={data.prompt} />
+            <ConversationDisplay content={task.prompt} />
           </CollapsibleSection>
         )}
 
         {/* Last Human Message */}
-        {data.last_human_message &&
-          data.last_human_message !== data.prompt.replace("Human: ", "") && (
+        {task.last_human_message &&
+          task.last_human_message !== task.prompt.replace("Human: ", "") && (
             <CollapsibleSection
               title="Latest Follow-up"
               sectionKey={`last-human-${index}`}
@@ -170,7 +255,7 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
               badge="Human Message"
               badgeColor="bg-green-100 text-green-800"
             >
-              <ConversationDisplay content={data.last_human_message} />
+              <ConversationDisplay content={task.last_human_message} />
             </CollapsibleSection>
           )}
 
@@ -194,16 +279,10 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                     </div>
                     Response A
                   </h4>
-                  {data.preference?.toLowerCase() === "response a" && (
-                    <div className="flex items-center gap-1 text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
-                      <Trophy className="w-3 h-3" />
-                      Preferred
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="p-4">
-                <ResponseDisplay title="" response={data.response_A} />
+                <ResponseDisplay title="" response={task.response_A} />
               </div>
             </div>
 
@@ -216,16 +295,10 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                     </div>
                     Response B
                   </h4>
-                  {data.preference?.toLowerCase() === "response b" && (
-                    <div className="flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
-                      <Trophy className="w-3 h-3" />
-                      Preferred
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="p-4">
-                <ResponseDisplay title="" response={data.response_B} />
+                <ResponseDisplay title="" response={task.response_B} />
               </div>
             </div>
           </div>

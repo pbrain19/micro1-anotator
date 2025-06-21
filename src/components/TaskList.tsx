@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from "react";
-import { CSVRow, ExpertOpinion } from "../types";
+import { TaskWithDuplicates, ExpertOpinion } from "../types";
 import { promptTemplate } from "./util";
-import { Search, X, Hash, Filter, Copy, Check } from "lucide-react";
+import { Search, X, Hash, Filter, Copy, Check, Users } from "lucide-react";
 
 interface TaskListProps {
-  data: CSVRow[];
+  data: TaskWithDuplicates[];
   expertOpinions: ExpertOpinion[];
   selectedIndex: number | null;
   onSelectTask: (index: number) => void;
@@ -41,7 +41,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   const copyRawData = async (
-    item: CSVRow,
+    item: TaskWithDuplicates,
     index: number,
     e: React.MouseEvent
   ) => {
@@ -237,32 +237,48 @@ Original Strength: ${item.strength}`;
                   </div>
                 </div>
 
-                {/* Metadata */}
-                <div className="space-y-2">
-                  {item.preference && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Preference:</span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getPreferenceColor(
-                          item.preference
-                        )}`}
-                      >
-                        {item.preference}
-                      </span>
+                {/* Expert Evaluator */}
+                {item.expert_opinion && (
+                  <div className="mb-3">
+                    <div className="text-xs text-gray-500 mb-1">Evaluator</div>
+                    <div className="text-xs bg-blue-100 px-2 py-1 rounded text-blue-700">
+                      {item.expert_opinion.assigned_preference_chooser}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {item.strength && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Strength:</span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${getStrengthBadge(
-                          item.strength
-                        )}`}
-                      >
-                        {item.strength}/3
+                {/* Duplicates indicator */}
+                {item.duplicates && item.duplicates.length > 0 && (
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                      <Users className="w-3 h-3" />
+                      <span>
+                        {item.duplicates.length} duplicate
+                        {item.duplicates.length > 1 ? "s" : ""}
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {/* Preference badges */}
+                <div className="flex flex-wrap gap-2">
+                  {item.preference && (
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full border font-medium ${getPreferenceColor(
+                        item.preference
+                      )}`}
+                    >
+                      {item.preference}
+                    </span>
+                  )}
+                  {item.strength && (
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${getStrengthBadge(
+                        item.strength
+                      )}`}
+                    >
+                      Strength: {item.strength}
+                    </span>
                   )}
                 </div>
 

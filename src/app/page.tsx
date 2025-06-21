@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
-import { CSVRow, ExpertOpinion } from "../types";
+import { CSVRow, ExpertOpinion, TaskWithDuplicates } from "../types";
+import { identifyDuplicateTasks } from "../components/util";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
 import {
@@ -14,12 +15,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type Task = CSVRow;
-
 export default function Home() {
   const router = useRouter();
-  const [data, setData] = useState<Task[]>([]);
+  const [rawData, setRawData] = useState<CSVRow[]>([]);
   const [expertOpinions, setExpertOpinions] = useState<ExpertOpinion[]>([]);
+  const [enhancedTasks, setEnhancedTasks] = useState<TaskWithDuplicates[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -55,7 +55,7 @@ export default function Home() {
             if (results.errors.length > 0) {
               console.error("CSV parsing errors:", results.errors);
             }
-            setData(results.data);
+            setRawData(results.data);
           },
           error: (error: Error) => {
             throw new Error(`CSV parsing failed: ${error.message}`);
@@ -121,13 +121,49 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Process enhanced tasks when both datasets are loaded
+  useEffect(() => {
+    if (rawData.length > 0 && expertOpinions.length > 0) {
+      const enhanced = identifyDuplicateTasks(rawData, expertOpinions);
+      setEnhancedTasks(enhanced);
+    }
+  }, [rawData, expertOpinions]);
+
+  // Handle URL parameters after data loads
+  useEffect(() => {
+    if (enhancedTasks.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const taskParam = urlParams.get("task");
+      if (taskParam) {
+        const taskIndex = enhancedTasks.findIndex(
+          (task) => task.task_id === taskParam
+        );
+        if (taskIndex !== -1) {
+          setSelectedIndex(taskIndex);
+        }
+      }
+    }
+  }, [enhancedTasks]);
+
   const handleTaskSelection = (index: number) => {
     setSelectedIndex(index);
 
-    // Update URL with task parameter
-    const url = new URL(window.location.href);
-    url.searchParams.set("task", index.toString());
-    router.push(url.pathname + url.search, { scroll: false });
+    // Update URL with task ID instead of index
+    const selectedTask = enhancedTasks[index];
+    if (selectedTask) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("task", selectedTask.task_id);
+      router.push(url.pathname + url.search, { scroll: false });
+    }
+  };
+
+  const handleTaskSelectionById = (taskId: string) => {
+    const taskIndex = enhancedTasks.findIndex(
+      (task) => task.task_id === taskId
+    );
+    if (taskIndex !== -1) {
+      handleTaskSelection(taskIndex);
+    }
   };
 
   const handleToggleSection = (key: string) => {
@@ -193,7 +229,7 @@ export default function Home() {
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-gray-600">
-                  {data.length} tasks loaded
+                  {enhancedTasks.length} tasks loaded
                 </span>
               </div>
               {selectedIndex !== null && (
@@ -234,7 +270,7 @@ export default function Home() {
               {!isListCollapsed && (
                 <div className="h-full overflow-hidden">
                   <TaskList
-                    data={data}
+                    data={enhancedTasks}
                     expertOpinions={expertOpinions}
                     selectedIndex={selectedIndex}
                     onSelectTask={handleTaskSelection}
@@ -252,10 +288,11 @@ export default function Home() {
               <div className="max-w-full px-6">
                 {selectedIndex !== null ? (
                   <TaskDetails
-                    data={data[selectedIndex]}
+                    task={enhancedTasks[selectedIndex]}
                     index={selectedIndex}
                     collapsedSections={collapsedSections}
                     onToggleSection={handleToggleSection}
+                    onTaskSelect={handleTaskSelectionById}
                   />
                 ) : (
                   <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-12 text-center border border-white/20">

@@ -26,6 +26,17 @@ export interface ExpertOpinion {
   justification_for_review: string;
 }
 
+export interface DuplicateTask {
+  task_id: string;
+  expert_opinion: ExpertOpinion;
+  original_task: CSVRow;
+}
+
+export interface TaskWithDuplicates extends CSVRow {
+  expert_opinion?: ExpertOpinion;
+  duplicates: DuplicateTask[];
+}
+
 export interface ConversationPart {
   speaker: "Human" | "Assistant";
   content: string;
