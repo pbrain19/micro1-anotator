@@ -1,15 +1,18 @@
 import React, { useState, useMemo } from "react";
-import { CSVRow } from "../types";
+import { CSVRow, ExpertOpinion } from "../types";
+import { promptTemplate } from "./util";
 import { Search, X, Hash, Filter, Copy, Check } from "lucide-react";
 
 interface TaskListProps {
   data: CSVRow[];
+  expertOpinions: ExpertOpinion[];
   selectedIndex: number | null;
   onSelectTask: (index: number) => void;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
   data,
+  expertOpinions,
   selectedIndex,
   onSelectTask,
 }) => {
@@ -44,8 +47,14 @@ export const TaskList: React.FC<TaskListProps> = ({
   ) => {
     e.stopPropagation(); // Prevent task selection when clicking copy button
 
-    // Format the CSV data nicely
-    const rawData = `Task ID: ${item.task_id}
+    // Find the corresponding expert opinion for this task
+    const expertOpinion = expertOpinions.find(
+      (opinion) => opinion.task_id === item.task_id
+    );
+
+    if (!expertOpinion) {
+      // Fallback to original format if no expert opinion found
+      const rawData = `Task ID: ${item.task_id}
 Prompt: ${item.prompt}
 Last Human Message: ${item.last_human_message}
 Response A: ${item.response_A}
@@ -54,8 +63,36 @@ Preference: ${item.preference}
 Reasoning: ${item.reasoning}
 Strength: ${item.strength}`;
 
+      try {
+        await navigator.clipboard.writeText(rawData);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+      return;
+    }
+
+    // Create the expert opinion string
+    const taskerOpinion = `Preference Choice: ${expertOpinion.preference_choice}
+Preference Strength: ${expertOpinion.preference_strength}
+Preference Justification: ${expertOpinion.preference_justification}`;
+
+    // Create the context string with task data
+    const context = `Task ID: ${item.task_id}
+Prompt: ${item.prompt}
+Last Human Message: ${item.last_human_message}
+Response A: ${item.response_A}
+Response B: ${item.response_B}
+Original Preference: ${item.preference}
+Original Reasoning: ${item.reasoning}
+Original Strength: ${item.strength}`;
+
+    // Use the template to create the final text
+    const templateText = promptTemplate(taskerOpinion, context);
+
     try {
-      await navigator.clipboard.writeText(rawData);
+      await navigator.clipboard.writeText(templateText);
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch (err) {
@@ -176,7 +213,7 @@ Strength: ${item.strength}`;
                         ? "bg-green-100 text-green-700 border border-green-200"
                         : "bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 border border-gray-200 hover:border-blue-200"
                     }`}
-                    title="Copy raw CSV data"
+                    title="Copy expert evaluation template"
                   >
                     {copiedIndex === originalIndex ? (
                       <>

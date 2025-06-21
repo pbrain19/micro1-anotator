@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
-import { CSVRow } from "../types";
+import { CSVRow, ExpertOpinion } from "../types";
 import { TaskList } from "../components/TaskList";
 import { TaskDetails } from "../components/TaskDetails";
 import {
@@ -12,82 +12,114 @@ import {
   ChevronLeft,
   Search,
 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+
+type Task = CSVRow;
 
 export default function Home() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [data, setData] = useState<CSVRow[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [data, setData] = useState<Task[]>([]);
+  const [expertOpinions, setExpertOpinions] = useState<ExpertOpinion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [isListCollapsed, setIsListCollapsed] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<{
     [key: string]: boolean;
   }>({});
-  const [isListCollapsed, setIsListCollapsed] = useState(false);
 
   useEffect(() => {
-    const loadCSV = async () => {
+    const loadData = async () => {
       try {
-        const response = await fetch("/sample-data.csv");
+        setLoading(true);
+
+        // Load original CSV data
+        const response = await fetch("/sample_data.csv");
+        if (!response.ok) {
+          throw new Error("Failed to fetch CSV data");
+        }
         const csvText = await response.text();
 
-        Papa.parse(csvText, {
+        // Load expert opinions CSV
+        const resultsResponse = await fetch("/results.csv");
+        if (!resultsResponse.ok) {
+          throw new Error("Failed to fetch results CSV data");
+        }
+        const resultsText = await resultsResponse.text();
+
+        // Parse original data
+        Papa.parse<CSVRow>(csvText, {
           header: true,
+          skipEmptyLines: true,
           complete: (results) => {
-            const parsedData = results.data
-              .map((row: unknown) => {
-                const typedRow = row as Record<string, string>;
-                return {
-                  task_id: typedRow["task_id"] || "",
-                  prompt: typedRow["prompt"] || "",
-                  last_human_message: typedRow["last_human_message"] || "",
-                  response_A: typedRow["response_A"] || "",
-                  response_B: typedRow["response_B"] || "",
-                  preference:
-                    typedRow[
-                      "Which do you prefer (Response A or Response B)"
-                    ] || "",
-                  reasoning:
-                    typedRow["Why do you prefer the one that you do?"] || "",
-                  strength:
-                    typedRow[
-                      "On a scale from 0-3 (inclusive) how strongly do you prefer the response that you chose?"
-                    ] || "",
-                };
-              })
-              .filter((row) => row.task_id); // Filter out empty rows
-
-            setData(parsedData);
-
-            // Check for task parameter in URL after data is loaded
-            const taskParam = searchParams.get("task");
-            if (taskParam) {
-              const taskIndex = parseInt(taskParam, 10);
-              if (
-                !isNaN(taskIndex) &&
-                taskIndex >= 0 &&
-                taskIndex < parsedData.length
-              ) {
-                setSelectedIndex(taskIndex);
-              }
+            if (results.errors.length > 0) {
+              console.error("CSV parsing errors:", results.errors);
             }
-
-            setLoading(false);
+            setData(results.data);
           },
           error: (error: Error) => {
-            setError(error.message);
-            setLoading(false);
+            throw new Error(`CSV parsing failed: ${error.message}`);
           },
         });
-      } catch {
-        setError("Failed to load CSV file");
+
+        // Parse expert opinions
+        Papa.parse<Record<string, string>>(resultsText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.errors.length > 0) {
+              console.error("Results CSV parsing errors:", results.errors);
+            }
+            // Transform the data to match our interface
+            const transformedData = results.data.map(
+              (row: Record<string, string>) => ({
+                task_id: row["task ID"] || "",
+                programming_language: row["Programming Language"] || "",
+                topic: row["topic"] || "",
+                category: row["category"] || "",
+                task_progress: row["Task Progress"] || "",
+                assigned_preference_chooser:
+                  row["Assigned Preference Chooser"] || "",
+                preference_choice: row["Preference Choice"] || "",
+                preference_strength:
+                  row[
+                    "Preference Strength (0-3 scale, 0 being nearly identical with low strength of preference and 3 being highly different and a very strong preference for your choice)"
+                  ] || "",
+                preference_justification:
+                  row[
+                    "3+ Sentence Preference Justification (3+ sentences covering the difference in relevance, accuracy, clarity, etc. )"
+                  ] || "",
+                response_a_image:
+                  row[
+                    "INSERT RESPONSE A SUPPORTING IMAGE HERE (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
+                  ] || "",
+                response_b_image:
+                  row[
+                    "INSERT RESPONSE B SUPPORTING IMAGE HERE  (if you have more than one image, create a google drive with them all and share the link, make sure to change the sharing permissions so all can view)"
+                  ] || "",
+                assigned_reviewer: row["Assigned Reviewer"] || "",
+                review: row["Review"] || "",
+                justification_for_review:
+                  row[
+                    "Justification for Review (Why do you agree or disagree with their preference choice in 1-3 sentences?)"
+                  ] || "",
+              })
+            );
+            setExpertOpinions(transformedData);
+          },
+          error: (error: Error) => {
+            throw new Error(`Results CSV parsing failed: ${error.message}`);
+          },
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
         setLoading(false);
       }
     };
 
-    loadCSV();
-  }, [searchParams]);
+    loadData();
+  }, []);
 
   const handleTaskSelection = (index: number) => {
     setSelectedIndex(index);
@@ -203,6 +235,7 @@ export default function Home() {
                 <div className="h-full overflow-hidden">
                   <TaskList
                     data={data}
+                    expertOpinions={expertOpinions}
                     selectedIndex={selectedIndex}
                     onSelectTask={handleTaskSelection}
                   />
