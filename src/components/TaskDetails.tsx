@@ -60,8 +60,12 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
     if (!expertOpinion) {
       // Fallback to original format if no expert opinion found
       const rawData = `Task ID: ${task.task_id}
-Prompt: ${task.prompt}
-Last Human Message: ${task.last_human_message}
+  Prompt: ${task.prompt}
+      ${
+        task.prompt && task.prompt.includes(task.last_human_message)
+          ? ""
+          : `Last Human Message: ${task.last_human_message}`
+      }
 Response A: ${task.response_A}
 Response B: ${task.response_B}
 Preference: ${task.preference}
@@ -86,7 +90,11 @@ Preference Justification: ${expertOpinion.preference_justification}`;
     // Create the context string with task data
     const context = `Task ID: ${task.task_id}
 Prompt: ${task.prompt}
-Last Human Message: ${task.last_human_message}
+${
+  task.prompt && task.prompt.includes(task.last_human_message)
+    ? ""
+    : `Last Human Message: ${task.last_human_message}`
+}
 Response A: ${task.response_A}
 Response B: ${task.response_B}
 Original Preference: ${task.preference}
