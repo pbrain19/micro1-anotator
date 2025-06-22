@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TaskWithDuplicates } from "../types";
+import { useTaskContext } from "./TaskContext";
+import { promptTemplate } from "./util";
 import { ConversationDisplay } from "./ConversationDisplay";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { ResponseDisplay } from "./ResponseDisplay";
 import {
-  Hash,
   Trophy,
   MessageSquare,
   User,
@@ -31,7 +32,9 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   onToggleSection,
 }) => {
   const router = useRouter();
+  const { expertOpinions } = useTaskContext();
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
+  const [copiedExpertEval, setCopiedExpertEval] = useState(false);
 
   const handleCopyTaskId = async (taskId: string) => {
     try {
@@ -50,9 +53,61 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   };
 
   const handleOpenLink = (taskId: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("task", taskId);
-    router.push(url.pathname + url.search, { scroll: false });
+    router.push(`/tasks/${taskId}`);
+  };
+
+  const handleCopyExpertEval = async () => {
+    // Find the corresponding expert opinion for this task
+    const expertOpinion = expertOpinions.find(
+      (opinion) => opinion.task_id === task.task_id
+    );
+
+    if (!expertOpinion) {
+      // Fallback to original format if no expert opinion found
+      const rawData = `Task ID: ${task.task_id}
+Prompt: ${task.prompt}
+Last Human Message: ${task.last_human_message}
+Response A: ${task.response_A}
+Response B: ${task.response_B}
+Preference: ${task.preference}
+Reasoning: ${task.reasoning}
+Strength: ${task.strength}`;
+
+      try {
+        await navigator.clipboard.writeText(rawData);
+        setCopiedExpertEval(true);
+        setTimeout(() => setCopiedExpertEval(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+      return;
+    }
+
+    // Create the expert opinion string
+    const taskerOpinion = `Preference Choice: ${expertOpinion.preference_choice}
+Preference Strength: ${expertOpinion.preference_strength}
+Preference Justification: ${expertOpinion.preference_justification}`;
+
+    // Create the context string with task data
+    const context = `Task ID: ${task.task_id}
+Prompt: ${task.prompt}
+Last Human Message: ${task.last_human_message}
+Response A: ${task.response_A}
+Response B: ${task.response_B}
+Original Preference: ${task.preference}
+Original Reasoning: ${task.reasoning}
+Original Strength: ${task.strength}`;
+
+    // Use the template to create the final text
+    const templateText = promptTemplate(taskerOpinion, context);
+
+    try {
+      await navigator.clipboard.writeText(templateText);
+      setCopiedExpertEval(true);
+      setTimeout(() => setCopiedExpertEval(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
   };
 
   return (
@@ -60,16 +115,6 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
       {/* Header Card */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center flex-shrink-0">
-              <Hash className="w-6 h-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold">Task #{index + 1}</h2>
-              <p className="text-blue-100">Detailed analysis and evaluation</p>
-            </div>
-          </div>
-
           {/* Task ID */}
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="text-xs uppercase tracking-wide text-blue-200 mb-1">
@@ -89,6 +134,17 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
                     <Check className="w-4 h-4 text-green-300" />
                   ) : (
                     <Copy className="w-4 h-4 text-blue-200" />
+                  )}
+                </button>
+                <button
+                  onClick={handleCopyExpertEval}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                  title="Copy expert evaluation template"
+                >
+                  {copiedExpertEval ? (
+                    <Check className="w-4 h-4 text-green-300" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-purple-200" />
                   )}
                 </button>
                 <button
