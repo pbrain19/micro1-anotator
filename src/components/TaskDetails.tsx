@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { TaskWithDuplicates } from "../types";
 import { useTaskContext } from "./TaskContext";
 import { promptTemplate } from "./util";
@@ -17,6 +16,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import Link from "next/link";
 
 interface TaskDetailsProps {
   task: TaskWithDuplicates;
@@ -31,7 +31,6 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
   collapsedSections,
   onToggleSection,
 }) => {
-  const router = useRouter();
   const { expertOpinions } = useTaskContext();
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
   const [copiedExpertEval, setCopiedExpertEval] = useState(false);
@@ -50,10 +49,6 @@ export const TaskDetails: React.FC<TaskDetailsProps> = ({
     } catch (err) {
       console.error("Failed to copy task ID:", err);
     }
-  };
-
-  const handleOpenLink = (taskId: string) => {
-    router.push(`/tasks/${taskId}`);
   };
 
   const handleCopyExpertEval = async () => {
@@ -126,6 +121,18 @@ Original Strength: ${task.strength}`;
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
+                  onClick={handleCopyExpertEval}
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                  title="Copy expert evaluation template"
+                >
+                  {copiedExpertEval ? (
+                    <span>Copied</span>
+                  ) : (
+                    <span>Copy Evaluation</span>
+                  )}
+                </button>
+
+                <button
                   onClick={() => handleCopyTaskId(task.task_id)}
                   className="p-1.5 hover:bg-white/10 rounded transition-colors"
                   title="Copy task ID"
@@ -136,24 +143,15 @@ Original Strength: ${task.strength}`;
                     <Copy className="w-4 h-4 text-blue-200" />
                   )}
                 </button>
-                <button
-                  onClick={handleCopyExpertEval}
-                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                  title="Copy expert evaluation template"
-                >
-                  {copiedExpertEval ? (
-                    <Check className="w-4 h-4 text-green-300" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-purple-200" />
-                  )}
-                </button>
-                <button
-                  onClick={() => handleOpenLink(task.task_id)}
-                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
-                  title="Open in new tab"
-                >
-                  <ExternalLink className="w-4 h-4 text-blue-200" />
-                </button>
+
+                <Link href={`/tasks?taskId=${task.task_id}`}>
+                  <button
+                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                    title="Open in new tab"
+                  >
+                    <ExternalLink className="w-4 h-4 text-blue-200" />
+                  </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -258,13 +256,14 @@ Original Strength: ${task.strength}`;
                               <Copy className="w-3 h-3 text-orange-600" />
                             )}
                           </button>
-                          <button
-                            onClick={() => handleOpenLink(duplicate.task_id)}
-                            className="p-1 hover:bg-orange-100 rounded transition-colors"
-                            title="Open in new tab"
-                          >
-                            <ExternalLink className="w-3 h-3 text-orange-600" />
-                          </button>
+                          <Link href={`/tasks?taskId=${duplicate.task_id}`}>
+                            <button
+                              className="p-1 hover:bg-orange-100 rounded transition-colors"
+                              title="Open in new tab"
+                            >
+                              <ExternalLink className="w-3 h-3 text-orange-600" />
+                            </button>
+                          </Link>
                         </div>
                       </div>
                       <span className="text-xs bg-orange-100 px-2 py-1 rounded text-orange-700 flex-shrink-0">
