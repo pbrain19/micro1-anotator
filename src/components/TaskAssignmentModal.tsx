@@ -40,6 +40,21 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
     return Array.from(expertSet).sort();
   }, [enhancedTasks]);
 
+  // Get categories available in filtered data with task counts
+  const availableCategories = useMemo(() => {
+    const categoryMap = new Map<string, number>();
+    filteredTasks.forEach((task) => {
+      if (task.expert_opinion?.category) {
+        const category = task.expert_opinion.category;
+        categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+      }
+    });
+
+    return Array.from(categoryMap.entries())
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  }, [filteredTasks]);
+
   // Calculate expert stats: completed work from ALL tasks, available from filtered tasks
   const expertStats = useMemo((): ExpertStats | null => {
     if (!selectedExpert) return null;
@@ -125,10 +140,38 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col p-6">
+          {/* Available Categories Overview */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Available Categories in Current Filter ({filteredTasks.length}{" "}
+              tasks)
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {availableCategories.map(({ category, count }) => (
+                <div
+                  key={category}
+                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg px-3 py-2 flex items-center gap-2"
+                >
+                  <span className="text-sm font-medium text-purple-900">
+                    {category}
+                  </span>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
+                    {count}
+                  </span>
+                </div>
+              ))}
+              {availableCategories.length === 0 && (
+                <div className="text-sm text-gray-500 italic">
+                  No categorized tasks in current filter
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Expert Selection */}
           <div className="mb-8">
             <label className="block text-lg font-semibold text-gray-800 mb-3">
-              Select Expert ({filteredTasks.length} tasks available)
+              Select Expert
             </label>
             <select
               value={selectedExpert}
