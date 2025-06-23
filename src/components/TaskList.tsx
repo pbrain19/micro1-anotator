@@ -1,17 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { TaskWithDuplicates } from "../types";
-import { promptTemplate } from "./util";
 import {
-  Search,
-  X,
-  Hash,
-  Filter,
-  Copy,
-  Check,
-  Users,
-  ToggleLeft,
-  ToggleRight,
-} from "lucide-react";
+  promptTemplate,
+  getBatchesReadyForReview,
+  getIncompleteBatches,
+} from "./util";
+import { Search, X, Hash, Filter, Copy, Check, Users } from "lucide-react";
 import { useTaskContext } from "./TaskContext";
 import { useRouter } from "next/navigation";
 
@@ -24,127 +18,32 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const { enhancedTasks, expertOpinions, tasksMap } = useTaskContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
-  const [showOnlyIncomplete, setShowOnlyIncomplete] = useState(false);
+  const [filterType, setFilterType] = useState<"none" | "ready" | "incomplete">(
+    "none"
+  );
 
-  // Helper function to check if task is ready for review (completed but no agreement)
-  const isTaskReadyForReview = (task: TaskWithDuplicates): boolean => {
-    const expertOpinion = task.expert_opinion;
-    if (!expertOpinion) return false;
-
-    const taskProgress = expertOpinion.task_progress
-      ? expertOpinion.task_progress.toLowerCase().trim()
-      : "";
-
-    const isComplete = ["completed", "revised"].includes(taskProgress);
-    const hasReview = expertOpinion.review.toLowerCase().includes("agree");
-
-    // Ready for review if completed but no agreement
-    return isComplete && !hasReview;
-  };
-
-  // Helper function to check if task is fully completed (completed with agreement)
-  const isTaskFullyCompleted = (task: TaskWithDuplicates): boolean => {
-    const expertOpinion = task.expert_opinion;
-    if (!expertOpinion) return false;
-
-    const taskProgress = expertOpinion.task_progress
-      ? expertOpinion.task_progress.toLowerCase().trim()
-      : "";
-
-    const isComplete = ["completed", "revised"].includes(taskProgress);
-    const hasReview = expertOpinion.review.toLowerCase().includes("agree");
-
-    // Fully completed if both completed and has agreement
-    return isComplete && hasReview;
-  };
-
-  // Create content key for batch grouping (same logic as util.tsx)
-  const createContentKey = (task: TaskWithDuplicates): string => {
-    const normalizeText = (text: string) => {
-      return text.toLowerCase().replace(/\s+/g, " ").trim();
-    };
-
-    const contentParts = [];
-    const prompt = normalizeText(task.prompt || "");
-    const lastHuman = normalizeText(task.last_human_message || "");
-    const responseA = normalizeText(task.response_A || "");
-    const responseB = normalizeText(task.response_B || "");
-
-    if (prompt && prompt.length > 10) {
-      contentParts.push(`prompt:${prompt}`);
-    }
-    if (lastHuman && lastHuman.length > 10) {
-      contentParts.push(`human:${lastHuman}`);
-    }
-    if (responseA && responseA.length > 10) {
-      contentParts.push(`responseA:${responseA}`);
-    }
-    if (responseB && responseB.length > 10) {
-      contentParts.push(`responseB:${responseB}`);
-    }
-
-    if (contentParts.length === 0) {
-      const availableContent = [prompt, lastHuman, responseA, responseB]
-        .filter((text) => text && text.length > 0)
-        .join("|");
-
-      if (availableContent.length === 0) {
-        return `unique_${task.task_id}`;
-      }
-
-      return availableContent;
-    }
-
-    return contentParts.join("|");
-  };
-
-  // Filter data based on search term and incomplete batch filter
+  // Filter data based on search term and batch filter
   const filteredData = useMemo(() => {
     let baseData = enhancedTasks.map((item, index) => ({
       item,
       originalIndex: index,
     }));
 
-    // Apply incomplete batch filter if enabled
-    if (showOnlyIncomplete) {
-      // Group tasks by content key to identify batches
-      const batchGroups = new Map<string, TaskWithDuplicates[]>();
+    // Apply batch filter if enabled
+    if (filterType !== "none") {
+      let filteredTaskIds: Set<string>;
 
-      enhancedTasks.forEach((task) => {
-        const contentKey = createContentKey(task);
-        if (!batchGroups.has(contentKey)) {
-          batchGroups.set(contentKey, []);
-        }
-        batchGroups.get(contentKey)!.push(task);
-      });
+      if (filterType === "ready") {
+        filteredTaskIds = getBatchesReadyForReview(enhancedTasks, tasksMap);
+      } else if (filterType === "incomplete") {
+        filteredTaskIds = getIncompleteBatches(enhancedTasks, tasksMap);
+      } else {
+        filteredTaskIds = new Set();
+      }
 
-      // Find task IDs from incomplete batches
-      const incompleteTaskIds = new Set<string>();
-
-      batchGroups.forEach((batchTasks) => {
-        // Check if ANY task in this batch is fully completed (has agreement)
-        const batchHasCompleted = batchTasks.some((task) => {
-          const taskData = tasksMap.get(task.task_id);
-          return taskData && isTaskFullyCompleted(taskData.task);
-        });
-
-        // Check if ANY task in this batch is ready for review
-        const batchHasReadyForReview = batchTasks.some((task) => {
-          const taskData = tasksMap.get(task.task_id);
-          return taskData && isTaskReadyForReview(taskData.task);
-        });
-
-        // Only include batch if it has tasks ready for review AND no fully completed tasks
-        if (batchHasReadyForReview && !batchHasCompleted) {
-          batchTasks.forEach((task) => {
-            incompleteTaskIds.add(task.task_id);
-          });
-        }
-      });
-
-      // Filter to only include tasks from incomplete batches
+      // Filter to only include tasks from filtered batches
       baseData = baseData.filter(({ item }) =>
-        incompleteTaskIds.has(item.task_id)
+        filteredTaskIds.has(item.task_id)
       );
     }
 
@@ -156,14 +55,21 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
     return baseData.filter(({ item }) =>
       item.task_id.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [enhancedTasks, searchTerm, showOnlyIncomplete, tasksMap]);
+  }, [enhancedTasks, searchTerm, filterType, tasksMap]);
+
+  const getFilterDescription = () => {
+    switch (filterType) {
+      case "ready":
+        return " (batches ready for review)";
+      case "incomplete":
+        return " (incomplete batches)";
+      default:
+        return "";
+    }
+  };
 
   console.log(
-    `Filtered data: ${filteredData.length} tasks${
-      showOnlyIncomplete
-        ? " (batches ready for review, no completed tasks)"
-        : ""
-    }`
+    `Filtered data: ${filteredData.length} tasks${getFilterDescription()}`
   );
 
   useEffect(() => {
@@ -295,23 +201,40 @@ Original Strength: ${item.strength}`;
           </div>
         </div>
 
-        {/* Filter Toggle */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowOnlyIncomplete(!showOnlyIncomplete)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              showOnlyIncomplete
-                ? "bg-orange-100 text-orange-800 border border-orange-200"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
-            }`}
-          >
-            {showOnlyIncomplete ? (
-              <ToggleRight className="w-4 h-4" />
-            ) : (
-              <ToggleLeft className="w-4 h-4" />
-            )}
-            <span>Show batches ready for review</span>
-          </button>
+        {/* Filter Controls */}
+        <div className="mb-4 space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilterType("none")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                filterType === "none"
+                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              All Tasks
+            </button>
+            <button
+              onClick={() => setFilterType("ready")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                filterType === "ready"
+                  ? "bg-orange-100 text-orange-800 border border-orange-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              Ready for Review
+            </button>
+            <button
+              onClick={() => setFilterType("incomplete")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                filterType === "incomplete"
+                  ? "bg-purple-100 text-purple-800 border border-purple-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              Incomplete Batches
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}

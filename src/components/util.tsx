@@ -229,3 +229,151 @@ export const calculateBatchStats = (
     processedTaskIds: blacklist.size, // For debugging - should equal total tasks
   };
 };
+
+// Helper function to create content key for batch grouping (shared logic)
+export const createContentKey = (task: TaskWithDuplicates): string => {
+  const normalizeText = (text: string) => {
+    return text.toLowerCase().replace(/\s+/g, " ").trim();
+  };
+
+  const contentParts = [];
+  const prompt = normalizeText(task.prompt || "");
+  const lastHuman = normalizeText(task.last_human_message || "");
+  const responseA = normalizeText(task.response_A || "");
+  const responseB = normalizeText(task.response_B || "");
+
+  if (prompt && prompt.length > 10) {
+    contentParts.push(`prompt:${prompt}`);
+  }
+  if (lastHuman && lastHuman.length > 10) {
+    contentParts.push(`human:${lastHuman}`);
+  }
+  if (responseA && responseA.length > 10) {
+    contentParts.push(`responseA:${responseA}`);
+  }
+  if (responseB && responseB.length > 10) {
+    contentParts.push(`responseB:${responseB}`);
+  }
+
+  if (contentParts.length === 0) {
+    const availableContent = [prompt, lastHuman, responseA, responseB]
+      .filter((text) => text && text.length > 0)
+      .join("|");
+
+    if (availableContent.length === 0) {
+      return `unique_${task.task_id}`;
+    }
+
+    return availableContent;
+  }
+
+  return contentParts.join("|");
+};
+
+// Helper function to check if task is ready for review (completed but no agreement)
+export const isTaskReadyForReview = (task: TaskWithDuplicates): boolean => {
+  const expertOpinion = task.expert_opinion;
+  if (!expertOpinion) return false;
+
+  const taskProgress = expertOpinion.task_progress
+    ? expertOpinion.task_progress.toLowerCase().trim()
+    : "";
+
+  const isComplete = ["completed", "revised"].includes(taskProgress);
+  const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+
+  // Ready for review if completed but no agreement
+  return isComplete && !hasReview;
+};
+
+// Helper function to check if task is fully completed (completed with agreement)
+export const isTaskFullyCompleted = (task: TaskWithDuplicates): boolean => {
+  const expertOpinion = task.expert_opinion;
+  if (!expertOpinion) return false;
+
+  const taskProgress = expertOpinion.task_progress
+    ? expertOpinion.task_progress.toLowerCase().trim()
+    : "";
+
+  const isComplete = ["completed", "revised"].includes(taskProgress);
+  const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+
+  // Fully completed if both completed and has agreement
+  return isComplete && hasReview;
+};
+
+// Function to filter batches ready for review (has ready tasks, no completed tasks)
+export const getBatchesReadyForReview = (
+  enhancedTasks: TaskWithDuplicates[],
+  tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
+): Set<string> => {
+  const batchGroups = new Map<string, TaskWithDuplicates[]>();
+  const readyTaskIds = new Set<string>();
+
+  // Group tasks by content key to identify batches
+  enhancedTasks.forEach((task) => {
+    const contentKey = createContentKey(task);
+    if (!batchGroups.has(contentKey)) {
+      batchGroups.set(contentKey, []);
+    }
+    batchGroups.get(contentKey)!.push(task);
+  });
+
+  batchGroups.forEach((batchTasks) => {
+    // Check if ANY task in this batch is fully completed (has agreement)
+    const batchHasCompleted = batchTasks.some((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return taskData && isTaskFullyCompleted(taskData.task);
+    });
+
+    // Check if ANY task in this batch is ready for review
+    const batchHasReadyForReview = batchTasks.some((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return taskData && isTaskReadyForReview(taskData.task);
+    });
+
+    // Only include batch if it has tasks ready for review AND no fully completed tasks
+    if (batchHasReadyForReview && !batchHasCompleted) {
+      batchTasks.forEach((task) => {
+        readyTaskIds.add(task.task_id);
+      });
+    }
+  });
+
+  return readyTaskIds;
+};
+
+// Function to filter batches that are not fully completed (at least one task without agreement)
+export const getIncompleteBatches = (
+  enhancedTasks: TaskWithDuplicates[],
+  tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
+): Set<string> => {
+  const batchGroups = new Map<string, TaskWithDuplicates[]>();
+  const incompleteTaskIds = new Set<string>();
+
+  // Group tasks by content key to identify batches
+  enhancedTasks.forEach((task) => {
+    const contentKey = createContentKey(task);
+    if (!batchGroups.has(contentKey)) {
+      batchGroups.set(contentKey, []);
+    }
+    batchGroups.get(contentKey)!.push(task);
+  });
+
+  batchGroups.forEach((batchTasks) => {
+    // Check if ALL tasks in this batch are fully completed
+    const allTasksCompleted = batchTasks.every((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return taskData && isTaskFullyCompleted(taskData.task);
+    });
+
+    // If not all tasks are completed, include this batch
+    if (!allTasksCompleted) {
+      batchTasks.forEach((task) => {
+        incompleteTaskIds.add(task.task_id);
+      });
+    }
+  });
+
+  return incompleteTaskIds;
+};
