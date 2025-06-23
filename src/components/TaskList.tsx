@@ -7,9 +7,19 @@ import {
   getUnstartedFromApprovedBatches,
   getBatchesNeedingAssignment,
 } from "./util";
-import { Search, X, Hash, Filter, Copy, Check, Users } from "lucide-react";
+import {
+  Search,
+  X,
+  Hash,
+  Filter,
+  Copy,
+  Check,
+  Users,
+  UserPlus,
+} from "lucide-react";
 import { useTaskContext } from "./TaskContext";
 import { useRouter } from "next/navigation";
+import { TaskAssignmentModal } from "./TaskAssignmentModal";
 
 interface TaskListProps {
   selectedTaskId?: string | null;
@@ -24,6 +34,7 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const [filterType, setFilterType] = useState<
     "none" | "ready" | "incomplete" | "unstarted" | "assignment"
   >("none");
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
 
   // Filter data based on search term and batch filter
   const filteredData = useMemo(() => {
@@ -235,30 +246,42 @@ Original Strength: ${item.strength}`;
               </div>
             </div>
 
-            {/* Copy All Button - Integrated into header */}
-            {filteredData.length > 0 && (
+            <div className="flex items-center gap-2">
+              {/* Assignment Tool Button */}
               <button
-                onClick={copyAllTaskIds}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-                  allTaskIdsCopied
-                    ? "bg-green-50 text-green-700 border border-green-200"
-                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
-                }`}
-                title={`Copy all ${filteredData.length} task IDs to clipboard`}
+                onClick={() => setIsAssignmentModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                title="Open task assignment tool"
               >
-                {allTaskIdsCopied ? (
-                  <>
-                    <Check className="w-3 h-3" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    Copy IDs
-                  </>
-                )}
+                <UserPlus className="w-3 h-3" />
+                Assign Tasks
               </button>
-            )}
+
+              {/* Copy All Button - Integrated into header */}
+              {filteredData.length > 0 && (
+                <button
+                  onClick={copyAllTaskIds}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                    allTaskIdsCopied
+                      ? "bg-green-50 text-green-700 border border-green-200"
+                      : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                  }`}
+                  title={`Copy all ${filteredData.length} task IDs to clipboard`}
+                >
+                  {allTaskIdsCopied ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      Copy IDs
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -477,6 +500,15 @@ Original Strength: ${item.strength}`;
           </div>
         )}
       </div>
+
+      {/* Task Assignment Modal - Portaled to document.body */}
+      <TaskAssignmentModal
+        isOpen={isAssignmentModalOpen}
+        onClose={() => setIsAssignmentModalOpen(false)}
+        filteredTasks={filteredData.map(({ item }) => item)}
+        tasksMap={tasksMap}
+        filterType={filterType}
+      />
     </div>
   );
 };
