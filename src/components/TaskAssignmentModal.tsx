@@ -28,6 +28,7 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
 }) => {
   const { enhancedTasks } = useTaskContext(); // Get all tasks for completed work analysis
   const [selectedExpert, setSelectedExpert] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   // Get unique experts from ALL tasks (not just filtered)
   const experts = useMemo(() => {
@@ -82,19 +83,26 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
       }
     });
 
-    // Find available tasks from FILTERED tasks, but only in categories where expert has completed work
+    // Find available tasks from FILTERED tasks
     const availableTasksInCategories: TaskWithDuplicates[] = [];
     filteredTasks.forEach((task) => {
       const taskData = tasksMap.get(task.task_id);
       if (
         taskData &&
         task.expert_opinion?.category &&
-        expertCategories.has(task.expert_opinion.category) &&
         !isTaskFullyCompleted(taskData.task) &&
         (!task.expert_opinion.assigned_preference_chooser ||
           task.expert_opinion.assigned_preference_chooser.trim() === "")
       ) {
-        availableTasksInCategories.push(task);
+        // When category filter is applied: show ALL available tasks in that category
+        // When no filter: only show available tasks in categories where expert has completed work
+        const categoryMatch = selectedCategory
+          ? task.expert_opinion.category === selectedCategory
+          : expertCategories.has(task.expert_opinion.category);
+
+        if (categoryMatch) {
+          availableTasksInCategories.push(task);
+        }
       }
     });
 
@@ -103,7 +111,29 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
       completedTasksByCategory,
       availableTasksInCategories,
     };
-  }, [selectedExpert, enhancedTasks, filteredTasks, tasksMap]);
+  }, [
+    selectedExpert,
+    selectedCategory,
+    enhancedTasks,
+    filteredTasks,
+    tasksMap,
+  ]);
+
+  // Get available tasks by category when no expert is selected but category is filtered
+  const availableTasksByCategory = useMemo(() => {
+    if (selectedExpert || !selectedCategory) return [];
+
+    return filteredTasks.filter((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return (
+        taskData &&
+        task.expert_opinion?.category === selectedCategory &&
+        !isTaskFullyCompleted(taskData.task) &&
+        (!task.expert_opinion.assigned_preference_chooser ||
+          task.expert_opinion.assigned_preference_chooser.trim() === "")
+      );
+    });
+  }, [selectedExpert, selectedCategory, filteredTasks, tasksMap]);
 
   if (!isOpen) return null;
 
@@ -147,19 +177,52 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
               tasks)
             </h3>
             <div className="flex flex-wrap gap-2">
-              {availableCategories.map(({ category, count }) => (
-                <div
-                  key={category}
-                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg px-3 py-2 flex items-center gap-2"
+              {/* Clear Category Filter Button */}
+              {selectedCategory && (
+                <button
+                  onClick={() => setSelectedCategory("")}
+                  className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-2 flex items-center gap-2 transition-colors"
+                  title="Clear category filter"
                 >
-                  <span className="text-sm font-medium text-purple-900">
-                    {category}
+                  <span className="text-sm font-medium text-gray-700">
+                    Clear Filter
                   </span>
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
-                    {count}
-                  </span>
-                </div>
-              ))}
+                  <span className="text-xs text-gray-500">×</span>
+                </button>
+              )}
+
+              {availableCategories.map(({ category, count }) => {
+                const isSelected = selectedCategory === category;
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`rounded-lg px-3 py-2 flex items-center gap-2 transition-all duration-200 ${
+                      isSelected
+                        ? "bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-400 shadow-sm"
+                        : "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300"
+                    }`}
+                    title={`Filter to ${category} tasks only`}
+                  >
+                    <span
+                      className={`text-sm font-medium ${
+                        isSelected ? "text-purple-800" : "text-purple-900"
+                      }`}
+                    >
+                      {category}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        isSelected
+                          ? "bg-purple-200 text-purple-800"
+                          : "bg-purple-100 text-purple-700"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
               {availableCategories.length === 0 && (
                 <div className="text-sm text-gray-500 italic">
                   No categorized tasks in current filter
@@ -226,35 +289,6 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
                               {tasks.length} completed
                             </span>
                           </div>
-                          <div className="space-y-3 max-h-48 overflow-y-auto">
-                            {tasks.slice(0, 5).map((task) => (
-                              <div
-                                key={task.task_id}
-                                className="bg-white p-4 rounded-lg border border-green-100 shadow-sm"
-                              >
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Hash className="w-4 h-4 text-gray-400" />
-                                  <span className="font-mono text-sm text-gray-600">
-                                    {task.task_id}
-                                  </span>
-                                </div>
-                                {task.duplicates &&
-                                  task.duplicates.length > 0 && (
-                                    <div className="flex items-center gap-2 text-sm text-orange-600">
-                                      <Users className="w-4 h-4" />
-                                      <span>
-                                        {task.duplicates.length} duplicates
-                                      </span>
-                                    </div>
-                                  )}
-                              </div>
-                            ))}
-                            {tasks.length > 5 && (
-                              <div className="text-sm text-gray-500 text-center py-3 bg-white rounded-lg border border-green-100">
-                                ... and {tasks.length - 5} more tasks
-                              </div>
-                            )}
-                          </div>
                         </div>
                       )
                     )
@@ -271,6 +305,11 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
                   <h3 className="text-xl font-semibold text-gray-900">
                     Available Tasks (
                     {expertStats.availableTasksInCategories.length})
+                    {selectedCategory && (
+                      <span className="text-sm font-normal text-purple-600 ml-2">
+                        in {selectedCategory}
+                      </span>
+                    )}
                   </h3>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-2">
@@ -289,57 +328,29 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {expertStats.availableTasksInCategories.map(
-                        (task, index) => (
-                          <div
-                            key={task.task_id}
-                            className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
-                          >
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                                  <Hash className="w-5 h-5 text-white" />
-                                </div>
-                                <div className="font-semibold text-gray-900">
-                                  Task #{index + 1}
-                                </div>
-                              </div>
+                      {expertStats.availableTasksInCategories.map((task) => (
+                        <div
+                          key={task.task_id}
+                          className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 hover:from-blue-100 hover:to-indigo-100 hover:border-blue-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                        >
+                          <div className="mb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Task ID
                             </div>
-
-                            <div className="mb-4">
-                              <div className="text-sm text-gray-500 mb-1">
-                                Task ID
-                              </div>
-                              <div className="font-mono text-sm bg-white px-3 py-2 rounded-lg text-gray-700 border border-blue-100">
-                                {task.task_id}
-                              </div>
+                            <div className="font-mono text-sm bg-white px-3 py-2 rounded-lg text-gray-700 border border-blue-100">
+                              {task.task_id}
                             </div>
-
-                            {task.expert_opinion?.category && (
-                              <div className="mb-4">
-                                <div className="text-sm text-gray-500 mb-1">
-                                  Category
-                                </div>
-                                <div className="text-sm bg-blue-100 text-blue-800 px-3 py-2 rounded-lg font-medium border border-blue-200">
-                                  {task.expert_opinion.category}
-                                </div>
-                              </div>
-                            )}
-
-                            {task.duplicates && task.duplicates.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
-                                  <Users className="w-4 h-4" />
-                                  <span className="font-medium">
-                                    {task.duplicates.length} duplicate
-                                    {task.duplicates.length > 1 ? "s" : ""}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
                           </div>
-                        )
-                      )}
+
+                          {task.expert_opinion?.category && (
+                            <div className="mb-4">
+                              <div className="text-sm bg-blue-100 text-blue-800 px-3 py-2 rounded-lg font-medium border border-blue-200">
+                                {task.expert_opinion.category}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -347,20 +358,100 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
             </div>
           )}
 
-          {!selectedExpert && (
+          {!selectedExpert && !selectedCategory && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <User className="w-10 h-10 text-gray-400" />
                 </div>
                 <div className="text-xl text-gray-600 font-semibold mb-3">
-                  Select an Expert
+                  Select an Expert or Category
                 </div>
                 <div className="text-gray-500 max-w-md mx-auto">
                   Choose an expert from the dropdown above to see their
-                  completed work and available assignments in their areas of
-                  expertise
+                  completed work and available assignments, or click a category
+                  above to see all available tasks in that category
                 </div>
+              </div>
+            </div>
+          )}
+
+          {!selectedExpert && selectedCategory && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Hash className="w-5 h-5 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Available Tasks in {selectedCategory} (
+                  {availableTasksByCategory.length})
+                </h3>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {availableTasksByCategory.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Hash className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <div className="text-gray-500 font-medium mb-2">
+                      No available tasks
+                    </div>
+                    <div className="text-sm text-gray-400 max-w-sm mx-auto">
+                      All tasks in {selectedCategory} are already assigned or
+                      completed
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {availableTasksByCategory.map((task, index) => (
+                      <div
+                        key={task.task_id}
+                        className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-5 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+                              <Hash className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="font-semibold text-gray-900">
+                              Task #{index + 1}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Task ID
+                          </div>
+                          <div className="font-mono text-sm bg-white px-3 py-2 rounded-lg text-gray-700 border border-purple-100">
+                            {task.task_id}
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="text-sm text-gray-500 mb-1">
+                            Category
+                          </div>
+                          <div className="text-sm bg-purple-100 text-purple-800 px-3 py-2 rounded-lg font-medium border border-purple-200">
+                            {task.expert_opinion?.category}
+                          </div>
+                        </div>
+
+                        {task.duplicates && task.duplicates.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                              <Users className="w-4 h-4" />
+                              <span className="font-medium">
+                                {task.duplicates.length} duplicate
+                                {task.duplicates.length > 1 ? "s" : ""}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
