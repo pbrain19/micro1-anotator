@@ -423,3 +423,44 @@ export const getUnstartedFromApprovedBatches = (
 
   return taskIdsToUnassign;
 };
+
+// Function to filter batches that need assignment (not in review and no completed tasks)
+export const getBatchesNeedingAssignment = (
+  enhancedTasks: TaskWithDuplicates[],
+  tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
+): Set<string> => {
+  const batchGroups = new Map<string, TaskWithDuplicates[]>();
+  const needsAssignmentTaskIds = new Set<string>();
+
+  // Group tasks by content key to identify batches
+  enhancedTasks.forEach((task) => {
+    const contentKey = createContentKey(task);
+    if (!batchGroups.has(contentKey)) {
+      batchGroups.set(contentKey, []);
+    }
+    batchGroups.get(contentKey)!.push(task);
+  });
+
+  batchGroups.forEach((batchTasks) => {
+    // Check if ANY task in this batch is fully completed (has agreement)
+    const batchHasCompleted = batchTasks.some((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return taskData && isTaskFullyCompleted(taskData.task);
+    });
+
+    // Check if ANY task in this batch is ready for review
+    const batchHasReadyForReview = batchTasks.some((task) => {
+      const taskData = tasksMap.get(task.task_id);
+      return taskData && isTaskReadyForReview(taskData.task);
+    });
+
+    // Include batch if it has no completed tasks AND no tasks ready for review
+    // This means the batch needs at least 1 task assigned to someone
+    if (!batchHasCompleted && !batchHasReadyForReview) {
+      // Only add the first task from this batch (one representative task per batch)
+      needsAssignmentTaskIds.add(batchTasks[0].task_id);
+    }
+  });
+
+  return needsAssignmentTaskIds;
+};

@@ -5,6 +5,7 @@ import {
   getBatchesReadyForReview,
   getIncompleteBatches,
   getUnstartedFromApprovedBatches,
+  getBatchesNeedingAssignment,
 } from "./util";
 import { Search, X, Hash, Filter, Copy, Check, Users } from "lucide-react";
 import { useTaskContext } from "./TaskContext";
@@ -21,7 +22,7 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
   const [allTaskIdsCopied, setAllTaskIdsCopied] = useState(false);
   const [filterType, setFilterType] = useState<
-    "none" | "ready" | "incomplete" | "unstarted"
+    "none" | "ready" | "incomplete" | "unstarted" | "assignment"
   >("none");
 
   // Filter data based on search term and batch filter
@@ -44,6 +45,8 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
           enhancedTasks,
           tasksMap
         );
+      } else if (filterType === "assignment") {
+        filteredTaskIds = getBatchesNeedingAssignment(enhancedTasks, tasksMap);
       } else {
         filteredTaskIds = new Set();
       }
@@ -72,6 +75,8 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
         return " (incomplete batches)";
       case "unstarted":
         return " (unstarted from approved batches)";
+      case "assignment":
+        return " (batches needing assignment)";
       default:
         return "";
     }
@@ -300,6 +305,16 @@ Original Strength: ${item.strength}`;
               }`}
             >
               Need Unassigning
+            </button>
+            <button
+              onClick={() => setFilterType("assignment")}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                filterType === "assignment"
+                  ? "bg-teal-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Needs Assignment
             </button>
           </div>
 
