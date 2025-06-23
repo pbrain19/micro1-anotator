@@ -5,6 +5,19 @@ import {
   DuplicateTask,
 } from "../types";
 
+// Helper function to check if review contains actual agreement (not disagreement)
+const hasActualAgreement = (review: string): boolean => {
+  if (!review || review.trim().length === 0) return false;
+
+  const normalizedReview = review.toLowerCase().trim();
+
+  // Check for disagreement first (takes precedence)
+  if (normalizedReview.includes("disagree")) return false;
+
+  // Then check for agreement
+  return normalizedReview.includes("agree");
+};
+
 export const promptTemplate = (tasker_opinion: string, context: string) => `
 You are a seasoned technical reviewer. Your task is to evaluate an expert's response and state whether you agree with the provided preference opinion.
 
@@ -177,7 +190,7 @@ export const calculateBatchStats = (
     const isComplete = ["completed", "revised"].includes(taskProgress);
 
     // Check if there's a meaningful review (not empty string)
-    const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+    const hasReview = hasActualAgreement(expertOpinion.review);
 
     return isComplete && hasReview;
   };
@@ -280,7 +293,7 @@ export const isTaskReadyForReview = (task: TaskWithDuplicates): boolean => {
     : "";
 
   const isComplete = ["completed", "revised"].includes(taskProgress);
-  const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+  const hasReview = hasActualAgreement(expertOpinion.review);
 
   // Ready for review if completed but no agreement
   return isComplete && !hasReview;
@@ -296,7 +309,7 @@ export const isTaskFullyCompleted = (task: TaskWithDuplicates): boolean => {
     : "";
 
   const isComplete = ["completed", "revised"].includes(taskProgress);
-  const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+  const hasReview = hasActualAgreement(expertOpinion.review);
 
   // Fully completed if both completed and has agreement
   return isComplete && hasReview;
@@ -378,16 +391,15 @@ export const getUnstartedFromApprovedBatches = (
     batchGroups.get(contentKey)!.push(task);
   });
 
-  // Helper function to check if task is assigned but has no agreement
-  const isTaskAssignedWithoutAgreement = (
-    task: TaskWithDuplicates
-  ): boolean => {
+  // Helper function to check if task is assigned but has no review at all
+  const isTaskAssignedWithoutReview = (task: TaskWithDuplicates): boolean => {
     const expertOpinion = task.expert_opinion;
     if (!expertOpinion) return false; // No expert opinion = not assigned
 
-    const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+    const hasReview =
+      expertOpinion.review && expertOpinion.review.trim().length > 0;
 
-    // Assigned without agreement if has expert opinion but no agreement
+    // Assigned without review if has expert opinion but no review content
     return !hasReview;
   };
 
@@ -402,7 +414,7 @@ export const getUnstartedFromApprovedBatches = (
     if (batchIsCompleted) {
       batchTasks.forEach((task) => {
         const taskData = tasksMap.get(task.task_id);
-        if (taskData && isTaskAssignedWithoutAgreement(taskData.task)) {
+        if (taskData && isTaskAssignedWithoutReview(taskData.task)) {
           taskIdsToUnassign.add(task.task_id);
         }
       });

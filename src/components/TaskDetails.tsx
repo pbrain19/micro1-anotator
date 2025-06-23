@@ -334,12 +334,12 @@ Original Strength: ${task.strength}`;
                                 className={`text-xs px-2 py-0.5 rounded ${
                                   duplicate.expert_opinion.review
                                     .toLowerCase()
-                                    .includes("agree")
-                                    ? "bg-green-100 text-green-700"
+                                    .includes("disagree")
+                                    ? "bg-red-100 text-red-700"
                                     : duplicate.expert_opinion.review
                                         .toLowerCase()
-                                        .includes("disagree")
-                                    ? "bg-red-100 text-red-700"
+                                        .includes("agree")
+                                    ? "bg-green-100 text-green-700"
                                     : "bg-gray-100 text-gray-700"
                                 }`}
                               >
