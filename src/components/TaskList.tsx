@@ -19,6 +19,7 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const { enhancedTasks, expertOpinions, tasksMap } = useTaskContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
+  const [allTaskIdsCopied, setAllTaskIdsCopied] = useState(false);
   const [filterType, setFilterType] = useState<
     "none" | "ready" | "incomplete" | "unstarted"
   >("none");
@@ -98,6 +99,23 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const handleTaskClick = (taskId: string) => {
     // Use shallow routing with search params instead of dynamic route
     router.push(`/tasks?taskId=${taskId}`, { scroll: false });
+  };
+
+  const copyAllTaskIds = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const taskIds = filteredData.map(({ item }) => item.task_id);
+    const taskIdText = taskIds.join("\n");
+
+    try {
+      await navigator.clipboard.writeText(taskIdText);
+      setAllTaskIdsCopied(true);
+      setTimeout(() => {
+        setAllTaskIdsCopied(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy task IDs:", err);
+    }
   };
 
   const copyRawData = async (item: TaskWithDuplicates, e: React.MouseEvent) => {
@@ -193,89 +211,120 @@ Original Strength: ${item.strength}`;
   return (
     <div className="h-full bg-white border-r border-gray-200 overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Filter className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Tasks</h2>
-            <p className="text-sm text-gray-600">
-              {filteredData.length}
-              {enhancedTasks.length !== filteredData.length &&
-                ` of ${enhancedTasks.length}`}{" "}
-              items
-            </p>
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+        {/* Title Section */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Filter className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
+                <p className="text-sm text-gray-500">
+                  {filteredData.length}
+                  {enhancedTasks.length !== filteredData.length &&
+                    ` of ${enhancedTasks.length}`}{" "}
+                  items
+                </p>
+              </div>
+            </div>
+
+            {/* Copy All Button - Integrated into header */}
+            {filteredData.length > 0 && (
+              <button
+                onClick={copyAllTaskIds}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                  allTaskIdsCopied
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200"
+                }`}
+                title={`Copy all ${filteredData.length} task IDs to clipboard`}
+              >
+                {allTaskIdsCopied ? (
+                  <>
+                    <Check className="w-3 h-3" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    Copy IDs
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Filter Controls */}
-        <div className="mb-4 space-y-2">
+        {/* Controls Section */}
+        <div className="px-6 py-4 space-y-4">
+          {/* Filter Pills */}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilterType("none")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filterType === "none"
-                  ? "bg-blue-100 text-blue-800 border border-blue-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                  ? "bg-blue-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              All Tasks
+              All
             </button>
             <button
               onClick={() => setFilterType("ready")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filterType === "ready"
-                  ? "bg-orange-100 text-orange-800 border border-orange-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                  ? "bg-orange-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               Ready for Review
             </button>
             <button
               onClick={() => setFilterType("incomplete")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filterType === "incomplete"
-                  ? "bg-purple-100 text-purple-800 border border-purple-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                  ? "bg-purple-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Incomplete Batches
+              Incomplete
             </button>
             <button
               onClick={() => setFilterType("unstarted")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 filterType === "unstarted"
-                  ? "bg-green-100 text-green-800 border border-green-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               Need Unassigning
             </button>
           </div>
-        </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-            <Search className="w-4 h-4 text-gray-400" />
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+              <Search className="w-4 h-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by Task ID..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 focus:bg-white transition-colors"
+            />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <input
-            type="text"
-            placeholder="Search by Task ID..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-          />
-          {searchTerm && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              type="button"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
         </div>
       </div>
 
