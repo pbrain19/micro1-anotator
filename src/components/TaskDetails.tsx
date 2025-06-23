@@ -228,6 +228,14 @@ Original Strength: ${task.strength}`;
                     </span>
                   </div>
                 )}
+                <div>
+                  <span className="text-sm font-medium text-green-800">
+                    Status:{" "}
+                  </span>
+                  <span className="text-green-700">
+                    {task.expert_opinion.task_progress}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -301,6 +309,14 @@ Original Strength: ${task.strength}`;
                         </span>
                         <span className="text-orange-700">
                           {duplicate.expert_opinion.preference_strength}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-orange-800">
+                          Status:{" "}
+                        </span>
+                        <span className="text-orange-700">
+                          {duplicate.expert_opinion.task_progress}
                         </span>
                       </div>
                       {duplicate.expert_opinion.preference_justification && (
