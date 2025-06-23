@@ -4,6 +4,7 @@ import {
   promptTemplate,
   getBatchesReadyForReview,
   getIncompleteBatches,
+  getUnstartedFromApprovedBatches,
 } from "./util";
 import { Search, X, Hash, Filter, Copy, Check, Users } from "lucide-react";
 import { useTaskContext } from "./TaskContext";
@@ -18,9 +19,9 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
   const { enhancedTasks, expertOpinions, tasksMap } = useTaskContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedTaskIds, setCopiedTaskIds] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<"none" | "ready" | "incomplete">(
-    "none"
-  );
+  const [filterType, setFilterType] = useState<
+    "none" | "ready" | "incomplete" | "unstarted"
+  >("none");
 
   // Filter data based on search term and batch filter
   const filteredData = useMemo(() => {
@@ -37,6 +38,11 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
         filteredTaskIds = getBatchesReadyForReview(enhancedTasks, tasksMap);
       } else if (filterType === "incomplete") {
         filteredTaskIds = getIncompleteBatches(enhancedTasks, tasksMap);
+      } else if (filterType === "unstarted") {
+        filteredTaskIds = getUnstartedFromApprovedBatches(
+          enhancedTasks,
+          tasksMap
+        );
       } else {
         filteredTaskIds = new Set();
       }
@@ -63,6 +69,8 @@ export const TaskList: React.FC<TaskListProps> = ({ selectedTaskId }) => {
         return " (batches ready for review)";
       case "incomplete":
         return " (incomplete batches)";
+      case "unstarted":
+        return " (unstarted from approved batches)";
       default:
         return "";
     }
@@ -233,6 +241,16 @@ Original Strength: ${item.strength}`;
               }`}
             >
               Incomplete Batches
+            </button>
+            <button
+              onClick={() => setFilterType("unstarted")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                filterType === "unstarted"
+                  ? "bg-green-100 text-green-800 border border-green-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+              }`}
+            >
+              Unstarted (Approved Batches)
             </button>
           </div>
         </div>
