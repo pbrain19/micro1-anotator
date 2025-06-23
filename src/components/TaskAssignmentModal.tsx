@@ -65,8 +65,8 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
     } = {};
     const expertCategories = new Set<string>();
 
-    // Find completed tasks by this expert from the FILTERED tasks (18 tasks)
-    filteredTasks.forEach((task) => {
+    // Find ALL completed tasks by this expert across ALL tasks (for expertise analysis)
+    enhancedTasks.forEach((task) => {
       const taskData = tasksMap.get(task.task_id);
       if (
         taskData &&
