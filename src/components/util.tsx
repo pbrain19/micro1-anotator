@@ -361,13 +361,13 @@ export const getIncompleteBatches = (
   return incompleteTaskIds;
 };
 
-// Function to filter tasks that are not complete/agreed from batches with at least 1 agreed task
+// Function to filter assigned tasks that need unassigning from completed batches
 export const getUnstartedFromApprovedBatches = (
   enhancedTasks: TaskWithDuplicates[],
   tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
 ): Set<string> => {
   const batchGroups = new Map<string, TaskWithDuplicates[]>();
-  const unstartedTaskIds = new Set<string>();
+  const taskIdsToUnassign = new Set<string>();
 
   // Group tasks by content key to identify batches
   enhancedTasks.forEach((task) => {
@@ -378,39 +378,36 @@ export const getUnstartedFromApprovedBatches = (
     batchGroups.get(contentKey)!.push(task);
   });
 
-  // Helper function to check if task is neither complete nor agreed
-  const isTaskUnstarted = (task: TaskWithDuplicates): boolean => {
+  // Helper function to check if task is assigned but has no agreement
+  const isTaskAssignedWithoutAgreement = (
+    task: TaskWithDuplicates
+  ): boolean => {
     const expertOpinion = task.expert_opinion;
-    if (!expertOpinion) return true; // No expert opinion = unstarted
+    if (!expertOpinion) return false; // No expert opinion = not assigned
 
-    const taskProgress = expertOpinion.task_progress
-      ? expertOpinion.task_progress.toLowerCase().trim()
-      : "";
-
-    const isComplete = ["completed", "revised"].includes(taskProgress);
     const hasReview = expertOpinion.review.toLowerCase().includes("agree");
 
-    // Unstarted if not complete and no agreement
-    return !isComplete && !hasReview;
+    // Assigned without agreement if has expert opinion but no agreement
+    return !hasReview;
   };
 
   batchGroups.forEach((batchTasks) => {
-    // Check if ANY task in this batch is fully completed (has agreement)
-    const batchHasApproved = batchTasks.some((task) => {
+    // Check if this batch is completed (has at least one task with agreement)
+    const batchIsCompleted = batchTasks.some((task) => {
       const taskData = tasksMap.get(task.task_id);
       return taskData && isTaskFullyCompleted(taskData.task);
     });
 
-    // If batch has at least one approved task, find unstarted tasks in this batch
-    if (batchHasApproved) {
+    // If batch is completed, find assigned tasks without agreement
+    if (batchIsCompleted) {
       batchTasks.forEach((task) => {
         const taskData = tasksMap.get(task.task_id);
-        if (taskData && isTaskUnstarted(taskData.task)) {
-          unstartedTaskIds.add(task.task_id);
+        if (taskData && isTaskAssignedWithoutAgreement(taskData.task)) {
+          taskIdsToUnassign.add(task.task_id);
         }
       });
     }
   });
 
-  return unstartedTaskIds;
+  return taskIdsToUnassign;
 };

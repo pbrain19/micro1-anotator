@@ -250,7 +250,7 @@ Original Strength: ${item.strength}`;
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
               }`}
             >
-              Unstarted (Approved Batches)
+              Need Unassigning
             </button>
           </div>
         </div>
