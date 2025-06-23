@@ -151,3 +151,81 @@ export const identifyDuplicateTasks = (
 
   return result;
 };
+
+// Function to calculate batch completion statistics
+export const calculateBatchStats = (
+  enhancedTasks: TaskWithDuplicates[],
+  tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
+) => {
+  const blacklist = new Set<string>(); // Hold task IDs in batches we no longer care about
+  let totalBatches = 0;
+  let completedBatches = 0;
+
+  // Helper function to check if task is completed and reviewed
+  const isTaskCompleted = (task: TaskWithDuplicates): boolean => {
+    const expertOpinion = task.expert_opinion;
+    if (!expertOpinion) {
+      console.warn("No expert opinion found for task", task.task_id);
+      return false;
+    }
+
+    // Check if task_progress indicates completion
+    const taskProgress = expertOpinion.task_progress
+      ? expertOpinion.task_progress.toLowerCase().trim()
+      : "";
+
+    const isComplete = ["completed", "revised"].includes(taskProgress);
+
+    // Check if there's a meaningful review (not empty string)
+    const hasReview = expertOpinion.review.toLowerCase().includes("agree");
+
+    return isComplete && hasReview;
+  };
+
+  // Iterate through each task to evaluate batches
+  enhancedTasks.forEach((task) => {
+    // Skip if this task is already in our blacklist
+    if (blacklist.has(task.task_id)) {
+      return;
+    }
+
+    // This represents a new batch
+    totalBatches++;
+
+    // Collect all task IDs in this batch (main task + duplicates)
+    const batchTaskIds = [task.task_id];
+    task.duplicates.forEach((duplicate) => {
+      batchTaskIds.push(duplicate.task_id);
+    });
+
+    // Check if any task in this batch is completed
+    let batchCompleted = false;
+
+    for (const taskId of batchTaskIds) {
+      const taskData = tasksMap.get(taskId);
+      if (taskData && isTaskCompleted(taskData.task)) {
+        batchCompleted = true;
+        break; // One completed task means the whole batch is considered complete
+      }
+    }
+
+    if (batchCompleted) {
+      completedBatches++;
+    }
+
+    // Add all task IDs in this batch to blacklist so we don't process them again
+    batchTaskIds.forEach((taskId) => blacklist.add(taskId));
+  });
+
+  const completionPercentage =
+    totalBatches > 0
+      ? ((completedBatches / totalBatches) * 100).toFixed(1)
+      : "0";
+
+  return {
+    totalBatches,
+    completedBatches,
+    completionPercentage,
+    processedTaskIds: blacklist.size, // For debugging - should equal total tasks
+  };
+};

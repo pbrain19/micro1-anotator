@@ -6,6 +6,7 @@ import { useTaskContext } from "./TaskContext";
 import { TaskList } from "./TaskList";
 import { TaskDetails } from "./TaskDetails";
 import { FileUpload } from "./FileUpload";
+import { calculateBatchStats } from "./util";
 import {
   Loader2,
   AlertCircle,
@@ -44,6 +45,12 @@ export default function TasksApp() {
 
   // Get the selected task if taskId is provided
   const selectedTask = taskId ? tasksMap.get(taskId)?.task || null : null;
+
+  // Calculate unique task statistics
+  const totalTasks = enhancedTasks.length;
+
+  // Calculate batch completion statistics using utility function
+  const batchStats = calculateBatchStats(enhancedTasks, tasksMap);
 
   if (loading) {
     return (
@@ -96,9 +103,16 @@ export default function TasksApp() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-              <p className="text-gray-600 text-sm">
-                {enhancedTasks.length} tasks loaded
-              </p>
+              <div className="space-y-1">
+                <p className="text-gray-600 text-sm">
+                  {totalTasks} tasks loaded
+                </p>
+                <p className="text-blue-600 text-sm font-medium">
+                  Batches: {batchStats.completedBatches}/
+                  {batchStats.totalBatches} completed (
+                  {batchStats.completionPercentage}%)
+                </p>
+              </div>
               {selectedTask && (
                 <span className="text-blue-600 text-sm font-medium">
                   → {taskId}
