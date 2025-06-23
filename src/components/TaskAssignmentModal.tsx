@@ -41,7 +41,7 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
     return Array.from(expertSet).sort();
   }, [enhancedTasks]);
 
-  // Get categories available in filtered data with task counts
+  // Get categories from the base filtered data (18 tasks) with ALL task counts
   const availableCategories = useMemo(() => {
     const categoryMap = new Map<string, number>();
     filteredTasks.forEach((task) => {
@@ -65,8 +65,8 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
     } = {};
     const expertCategories = new Set<string>();
 
-    // Find ALL completed tasks by this expert across ALL tasks (not just filtered)
-    enhancedTasks.forEach((task) => {
+    // Find completed tasks by this expert from the FILTERED tasks (18 tasks)
+    filteredTasks.forEach((task) => {
       const taskData = tasksMap.get(task.task_id);
       if (
         taskData &&
@@ -83,7 +83,7 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
       }
     });
 
-    // Find available tasks from FILTERED tasks
+    // Find available tasks from FILTERED tasks (18 tasks)
     const availableTasksInCategories: TaskWithDuplicates[] = [];
     filteredTasks.forEach((task) => {
       const taskData = tasksMap.get(task.task_id);
@@ -119,21 +119,14 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
     tasksMap,
   ]);
 
-  // Get available tasks by category when no expert is selected but category is filtered
-  const availableTasksByCategory = useMemo(() => {
+  // Get ALL tasks by category from the base filtered data (18 tasks) when no expert is selected
+  const tasksByCategory = useMemo(() => {
     if (selectedExpert || !selectedCategory) return [];
 
     return filteredTasks.filter((task) => {
-      const taskData = tasksMap.get(task.task_id);
-      return (
-        taskData &&
-        task.expert_opinion?.category === selectedCategory &&
-        !isTaskFullyCompleted(taskData.task) &&
-        (!task.expert_opinion.assigned_preference_chooser ||
-          task.expert_opinion.assigned_preference_chooser.trim() === "")
-      );
+      return task.expert_opinion?.category === selectedCategory;
     });
-  }, [selectedExpert, selectedCategory, filteredTasks, tasksMap]);
+  }, [selectedExpert, selectedCategory, filteredTasks]);
 
   if (!isOpen) return null;
 
@@ -383,73 +376,112 @@ const TaskAssignmentModalContent: React.FC<TaskAssignmentModalProps> = ({
                   <Hash className="w-5 h-5 text-purple-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Available Tasks in {selectedCategory} (
-                  {availableTasksByCategory.length})
+                  Tasks in {selectedCategory} ({tasksByCategory.length})
                 </h3>
               </div>
               <div className="flex-1 overflow-y-auto">
-                {availableTasksByCategory.length === 0 ? (
+                {tasksByCategory.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Hash className="w-8 h-8 text-gray-400" />
                     </div>
                     <div className="text-gray-500 font-medium mb-2">
-                      No available tasks
+                      No tasks found
                     </div>
                     <div className="text-sm text-gray-400 max-w-sm mx-auto">
-                      All tasks in {selectedCategory} are already assigned or
-                      completed
+                      No tasks in {selectedCategory} from the current filter
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {availableTasksByCategory.map((task, index) => (
-                      <div
-                        key={task.task_id}
-                        className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-5 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
-                              <Hash className="w-5 h-5 text-white" />
+                    {tasksByCategory.map((task, index) => {
+                      const taskData = tasksMap.get(task.task_id);
+                      const isCompleted =
+                        taskData && isTaskFullyCompleted(taskData.task);
+                      const isAssigned =
+                        task.expert_opinion?.assigned_preference_chooser &&
+                        task.expert_opinion.assigned_preference_chooser.trim() !==
+                          "";
+
+                      return (
+                        <div
+                          key={task.task_id}
+                          className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-5 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+                                <Hash className="w-5 h-5 text-white" />
+                              </div>
+                              <div className="font-semibold text-gray-900">
+                                Task #{index + 1}
+                              </div>
                             </div>
-                            <div className="font-semibold text-gray-900">
-                              Task #{index + 1}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            Task ID
-                          </div>
-                          <div className="font-mono text-sm bg-white px-3 py-2 rounded-lg text-gray-700 border border-purple-100">
-                            {task.task_id}
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="text-sm text-gray-500 mb-1">
-                            Category
-                          </div>
-                          <div className="text-sm bg-purple-100 text-purple-800 px-3 py-2 rounded-lg font-medium border border-purple-200">
-                            {task.expert_opinion?.category}
-                          </div>
-                        </div>
-
-                        {task.duplicates && task.duplicates.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
-                              <Users className="w-4 h-4" />
-                              <span className="font-medium">
-                                {task.duplicates.length} duplicate
-                                {task.duplicates.length > 1 ? "s" : ""}
-                              </span>
+                            <div className="flex gap-2">
+                              {isCompleted && (
+                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium">
+                                  Completed
+                                </span>
+                              )}
+                              {isAssigned && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                                  Assigned
+                                </span>
+                              )}
+                              {!isCompleted && !isAssigned && (
+                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
+                                  Available
+                                </span>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          <div className="mb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Task ID
+                            </div>
+                            <div className="font-mono text-sm bg-white px-3 py-2 rounded-lg text-gray-700 border border-purple-100">
+                              {task.task_id}
+                            </div>
+                          </div>
+
+                          <div className="mb-4">
+                            <div className="text-sm text-gray-500 mb-1">
+                              Category
+                            </div>
+                            <div className="text-sm bg-purple-100 text-purple-800 px-3 py-2 rounded-lg font-medium border border-purple-200">
+                              {task.expert_opinion?.category}
+                            </div>
+                          </div>
+
+                          {isAssigned && (
+                            <div className="mb-4">
+                              <div className="text-sm text-gray-500 mb-1">
+                                Assigned to
+                              </div>
+                              <div className="text-sm bg-blue-100 text-blue-800 px-3 py-2 rounded-lg font-medium border border-blue-200">
+                                {
+                                  task.expert_opinion
+                                    ?.assigned_preference_chooser
+                                }
+                              </div>
+                            </div>
+                          )}
+
+                          {task.duplicates && task.duplicates.length > 0 && (
+                            <div>
+                              <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                                <Users className="w-4 h-4" />
+                                <span className="font-medium">
+                                  {task.duplicates.length} duplicate
+                                  {task.duplicates.length > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
