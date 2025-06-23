@@ -343,35 +343,18 @@ export const getBatchesReadyForReview = (
   return readyTaskIds;
 };
 
-// Function to filter batches that are not fully completed (at least one task without agreement)
+// Function to filter individual tasks that are not fully completed (only the incomplete ones)
 export const getIncompleteBatches = (
   enhancedTasks: TaskWithDuplicates[],
   tasksMap: Map<string, { task: TaskWithDuplicates; index: number }>
 ): Set<string> => {
-  const batchGroups = new Map<string, TaskWithDuplicates[]>();
   const incompleteTaskIds = new Set<string>();
 
-  // Group tasks by content key to identify batches
+  // Check each individual task and include only if it's not fully completed
   enhancedTasks.forEach((task) => {
-    const contentKey = createContentKey(task);
-    if (!batchGroups.has(contentKey)) {
-      batchGroups.set(contentKey, []);
-    }
-    batchGroups.get(contentKey)!.push(task);
-  });
-
-  batchGroups.forEach((batchTasks) => {
-    // Check if ALL tasks in this batch are fully completed
-    const allTasksCompleted = batchTasks.every((task) => {
-      const taskData = tasksMap.get(task.task_id);
-      return taskData && isTaskFullyCompleted(taskData.task);
-    });
-
-    // If not all tasks are completed, include this batch
-    if (!allTasksCompleted) {
-      batchTasks.forEach((task) => {
-        incompleteTaskIds.add(task.task_id);
-      });
+    const taskData = tasksMap.get(task.task_id);
+    if (taskData && !isTaskFullyCompleted(taskData.task)) {
+      incompleteTaskIds.add(task.task_id);
     }
   });
 
